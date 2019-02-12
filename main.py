@@ -73,10 +73,12 @@ def svd_whiten(X):
 
     return X_white
 
+
 def compute_matrix_phi(samples, samples_copy, alpha):
     return (1 / compute_z_phi(samples, alpha)) * \
-           (np.array([(math.exp((-1) * alpha * math.pow(LA.norm(sample), 2)) * np.dot(sample, sample))
-                      for sample in samples]).sum())
+           (np.array([(math.exp((-1) * alpha * math.pow(LA.norm(sample), 2)) *
+                       np.dot(sample[:, np.newaxis], sample[np.newaxis, :]))
+                      for sample in samples.T]).sum(axis=0))
 
 
 def compute_z_phi(samples, alpha):
@@ -181,13 +183,6 @@ def generate_isotropic_samples(G, N, n, d):
         samples = np.append(samples, sample, axis=1)
 
     whiten_samples = whiten(center(samples))
-    
-    # # verify that covariance is I
-    # print('samples matrix cov')
-    # plotDataAndCov(samples)
-    # whiten_samples = whiten(center(samples))
-    # print('whiten sample covariance matrix')
-    # plotDataAndCov(whiten_samples)
 
     for _ in range(N):
         sample = np.dot(Q, np.random.rand(n - d, 1)) + np.dot(Q_orthogonal, np.random.rand(d, 1))
@@ -226,12 +221,19 @@ def orthogonal_complement(x, normalize=True, threshold=1e-15):
     return oc
 
 
+def assert_isotropic_model(X):
+    print('samples covariance')
+    plotDataAndCov(X)
+    assert (np.allclose(np.mean(X, axis=0), np.zeros(X.shape[1]), rtol=1.e-2, atol=1.e-2))  # each column vector should have mean zero
+    cov_X = np.cov(X, rowvar=False, bias=True)
+    assert (cov_X.shape[0] == cov_X.shape[1]) and np.allclose(cov_X, np.eye(cov_X.shape[0]), rtol=1.e-2, atol=1.e-2)  # covariance matrix should by identity
+
 def main():
     # phi - represent the X 2-norm gaussian measure
     # psi - represent the <X,X'> gaussian measure
 
     # input
-    n = 5  # dimension
+    n = 4  # dimension
     d = 2  # subspace dimension
     epsilon = 0.2  # how close result vectors will be from E
     delta = 0.4  # probability 1-delta to success
@@ -253,8 +255,12 @@ def main():
 
     samples, samples_copy = generate_isotropic_samples(G, N, n, d)
 
+    assert_isotropic_model(samples)
+    assert_isotropic_model(samples_copy)
+
     # Calculate matrices
     matrix_phi = compute_matrix_phi(samples, samples_copy, alpha1) #TODO bug - return integer instead of matrix
+    print_matrix(matrix_phi)
     matrix_psi = compute_matrix_psi(samples, samples_copy, alpha2)
 
     # Calculate the gaussian eigenvalue for each matrix
