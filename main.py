@@ -15,22 +15,8 @@ from sklearn.feature_selection import SelectFromModel
 
 def plotDataAndCov(data):
     ACov = np.cov(data, rowvar=False, bias=True)
-    print('Covariance matrix:\n', ACov)
-    # fig, ax = plt.subplots(nrows=1, ncols=2)
-    # fig.set_size_inches(10, 10)
-    # # Choosing the colors
-    # cmap = sns.color_palette("GnBu", 10)
-    # sns.heatmap(ACov, cmap=cmap, vmin=0)
-    # ax1 = plt.subplot(2, 2, 2)
-    # # data can include the colors
-    # if data.shape[1] == 3:
-    #     c = data[:, 2]
-    # else:
-    #     c = "#0A98BE"
-    # ax1.scatter(data[:, 0], data[:, 1], c=c, s=40)
-    # # Remove the top and right axes from the data plot
-    # ax1.spines['right'].set_visible(False)
-    # ax1.spines['top'].set_visible(False)
+    print('\nCovariance matrix:\n', ACov)
+
 
 def print_matrix(matrix):
     s = [[str(e) for e in row] for row in matrix]
@@ -38,40 +24,6 @@ def print_matrix(matrix):
     fmt = '\t'.join('{{:{}}}'.format(x) for x in lens)
     table = [fmt.format(*row) for row in s]
     print('\n'.join(table))
-
-
-# def whiten(X, fudge=1E-18):
-#
-#    # the matrix X should be observations-by-components
-#
-#    # get the covariance matrix
-#    Xcov = np.dot(X.T,X)
-#
-#    # eigenvalue decomposition of the covariance matrix
-#    d, V = np.linalg.eigh(Xcov)
-#
-#    # a fudge factor can be used so that eigenvectors associated with
-#    # small eigenvalues do not get overamplified.
-#    D = np.diag(1. / np.sqrt(d+fudge))
-#
-#    # whitening matrix
-#    W = np.dot(np.dot(V, D), V.T)
-#
-#    # multiply by the whitening matrix
-#    X_white = np.dot(X, W)
-#
-#    return X_white
-
-def svd_whiten(X):
-
-    U, s, Vt = np.linalg.svd(X, full_matrices=False)
-
-    # U and Vt are the singular matrices, and s contains the singular values.
-    # Since the rows of both U and Vt are orthonormal vectors, then U * Vt
-    # will be white
-    X_white = np.dot(U, Vt)
-
-    return X_white
 
 
 def compute_matrix_phi(samples, samples_copy, alpha):
@@ -86,17 +38,25 @@ def compute_z_phi(samples, alpha):
 
 
 def compute_matrix_psi(samples, samples_copy, alpha):
-    samples_tuple_array = np.array((samples, samples_copy)).T
-    return (1 / compute_z_psi(samples, samples_copy, alpha)) * \
-           (np.array([(math.exp((-1) * alpha * np.dot(samples_tuple[0], samples_tuple[1])) *
-                       (np.dot(samples_tuple[0], samples_tuple[1].T) + np.dot(samples_tuple[1], samples_tuple[0].T)))
-                      for samples_tuple in samples_tuple_array]).sum())
+    return_val = 0
+    i = 0
+    while i < len(samples.T):
+        return_val += math.exp((-1) * alpha * np.dot(samples.T[i], samples_copy.T[i])) * \
+                      (np.dot(samples.T[i][:, np.newaxis], samples_copy.T[i][np.newaxis, :]) +
+                       np.dot(samples_copy.T[i][:, np.newaxis], samples.T[i][np.newaxis, :]))
+        i += 1
+
+    return (1 / compute_z_psi(samples, samples_copy, alpha)) * return_val
 
 
 def compute_z_psi(samples, samples_copy, alpha):
-    samples_tuple_array = np.array((samples, samples_copy)).T
-    return 2 * np.array([(math.exp((-1) * alpha * np.dot(samples_tuple[0], samples_tuple[1])))
-                         for samples_tuple in samples_tuple_array]).sum()
+    return_val = 0
+    i = 0
+    while i < len(samples.T):
+        return_val += math.exp((-1) * alpha * np.dot(samples.T[i], samples_copy.T[i]))
+        i += 1
+
+    return 2 * return_val
 
 
 def get_matrix_relevant_eigenvalues(matrix_eigenvalues, gaussian_eigenvalue, threshold):
@@ -113,22 +73,24 @@ def calculate_gaussian_psi_eigenvalue(alpha):
 
 def get_matrix_relevant_eigenvectors(matrix, gaussian_eigenvalue, threshold):
     eigenvalues, eigenvectors = LA.eig(matrix)
-
-    relevant_eigenvectors = np.array()
-    for i in range(len(eigenvalues)):
+    relevant_eigenvectors = np.empty((eigenvectors.shape[0], 0), float)
+    i = 0
+    while i < len(eigenvalues):
         if math.fabs(eigenvalues[i] - gaussian_eigenvalue) > threshold:
-            relevant_eigenvectors = np.append(relevant_eigenvectors, eigenvectors[i])
+            relevant_eigenvectors = np.append(relevant_eigenvectors, eigenvectors[:, i][:, np.newaxis], axis=1)
+
+        i += 1
 
     return relevant_eigenvectors
 
 
-def calculate_approximate_non_gaussian_space(e1, e2):
-    intersection = np.intersect1d(e1, e2)
-    return np.where(LA.norm(intersection) == 1)
+# check whether this is a vector that belongs to both eigenspaces e1, e2
+def union_subspace(e1, e2):
+    return np.concatenate((e1, e2), axis=1)
 
 
 def polynom(degree_r, n_param, epsilon_param, delta_param, D_param, K_param):
-    return degree_r
+    return 2
 
 
 def generate_gaussian_subspace(rows, cols):
@@ -138,27 +100,13 @@ def generate_gaussian_subspace(rows, cols):
 
 
 def center(X):
-    newX = X - np.mean(X, axis = 0)
+    newX = X - np.mean(X, axis=0)
     return newX
-
-def standardize(X):
-    newX = center(X)/np.std(X, axis = 0)
-    return newX
-
-
-def decorrelate(X):
-    newX = center(X)
-    cov = X.T.dot(X)/float(X.shape[0])
-    # Calculate the eigenvalues and eigenvectors of the covariance matrix
-    eigVals, eigVecs = np.linalg.eig(cov)
-    # Apply the eigenvectors to X
-    decorrelated = X.dot(eigVecs)
-    return decorrelated
 
 
 def whiten(X):
     # newX = center(X)
-    cov = X.T.dot(X)/float(X.shape[0])
+    cov = X.T.dot(X) / float(X.shape[0])
     # Calculate the eigenvalues and eigenvectors of the covariance matrix
     eigVals, eigVecs = np.linalg.eig(cov)
     # Apply the eigenvectors to X
@@ -168,10 +116,7 @@ def whiten(X):
     return whitened
 
 
-def generate_isotropic_samples(G, N, n, d):
-    Q, _ = np.linalg.qr(G)  # QR decomposition from Gaussian Matrix size: n X (n-d)
-    Q_orthogonal = orthogonal_complement(Q, normalize=True)  # subspace orthogonal to Q - non gaussian Matrix size: n X d
-
+def generate_isotropic_samples(Q, Q_orthogonal, N, n, d):
     samples = np.empty((n, 0), float)
     samples_copy = np.empty((n, 0), float)
 
@@ -193,7 +138,7 @@ def generate_isotropic_samples(G, N, n, d):
     return whiten_samples, whiten_samples_copy
 
 
-def orthogonal_complement(x, normalize=True, threshold=1e-15):
+def orthogonal_complement(x: object, normalize: object = True, threshold: object = 1e-15) -> object:
     """Compute orthogonal complement of a matrix
 
     this works along axis zero, i.e. rank == column rank,
@@ -222,11 +167,13 @@ def orthogonal_complement(x, normalize=True, threshold=1e-15):
 
 
 def assert_isotropic_model(X):
-    print('samples covariance')
-    plotDataAndCov(X)
-    assert (np.allclose(np.mean(X, axis=0), np.zeros(X.shape[1]), rtol=1.e-2, atol=1.e-2))  # each column vector should have mean zero
+    assert (np.allclose(np.mean(X, axis=0), np.zeros(X.shape[1]), rtol=1.e-2,
+                        atol=1.e-2))  # each column vector should have mean zero
     cov_X = np.cov(X, rowvar=False, bias=True)
-    assert (cov_X.shape[0] == cov_X.shape[1]) and np.allclose(cov_X, np.eye(cov_X.shape[0]), rtol=1.e-2, atol=1.e-2)  # covariance matrix should by identity
+    print_matrix(cov_X)
+    assert (cov_X.shape[0] == cov_X.shape[1]) and np.allclose(cov_X, np.eye(cov_X.shape[0]), rtol=1.e-1,
+                                                              atol=1.e-1)  # covariance matrix should by identity
+
 
 def main():
     # phi - represent the X 2-norm gaussian measure
@@ -253,19 +200,31 @@ def main():
     # sns.distplot(G[:, 0], color="#53BB04")
     # plt.show()
 
-    samples, samples_copy = generate_isotropic_samples(G, N, n, d)
+    # generate gaussian subspace
+    Q, _ = np.linalg.qr(G)  # QR decomposition from Gaussian Matrix size: n X (n-d)
+
+    # generate subspace orthogonal to the gaussian (non gaussian) - Matrix size: n X d (REQUESTED E)
+    Q_orthogonal = orthogonal_complement(Q, normalize=True)
+
+    samples, samples_copy = generate_isotropic_samples(Q, Q_orthogonal, N, n, d)
 
     assert_isotropic_model(samples)
     assert_isotropic_model(samples_copy)
 
     # Calculate matrices
-    matrix_phi = compute_matrix_phi(samples, samples_copy, alpha1) #TODO bug - return integer instead of matrix
+    matrix_phi = compute_matrix_phi(samples, samples_copy, alpha1)
+    print('\nmatrix_phi')
     print_matrix(matrix_phi)
     matrix_psi = compute_matrix_psi(samples, samples_copy, alpha2)
+    print('\nmatrix_psi')
+    print_matrix(matrix_psi)
 
     # Calculate the gaussian eigenvalue for each matrix
     gaussian_phi_eigenvalue = calculate_gaussian_phi_eigenvalue(alpha1)
     gaussian_psi_eigenvalue = calculate_gaussian_psi_eigenvalue(alpha2)
+
+    print('\ngaussian_phi_eigenvalue: ', gaussian_phi_eigenvalue)
+    print('\ngaussian_psi_eigenvalue: ', gaussian_psi_eigenvalue)
 
     # Calculate corresponding eigenvectors for the relevant eigenvalues -
     # those which are far away beta from the gaussian eigenvalues
@@ -275,11 +234,30 @@ def main():
                                                                         gaussian_psi_eigenvalue, beta2)
 
     # Calculate E space - non gaussian space
-    approximate_non_gaussian_space = \
-        calculate_approximate_non_gaussian_space(matrix_phi_relevant_eigenvectors,
-                                                 matrix_psi_relevant_eigenvectors)
+    result_space = union_subspace(matrix_phi_relevant_eigenvectors, matrix_psi_relevant_eigenvectors)
 
-    return approximate_non_gaussian_space
+
+
+    print('\nresult_space')
+    print_matrix(result_space)
+
+    i = 0
+    random_spanned_vector = np.zeros((result_space.shape[0], 1), float)
+    while i < result_space.shape[1]:
+        random_spanned_vector += np.random.random_sample() * result_space[:, i][:, np.newaxis]
+        i += 1
+
+
+    print('\nE')
+    print_matrix(Q_orthogonal)
+
+    linear_combination_of_Q_orthogonal_columns = np.linalg.lstsq(Q_orthogonal, random_spanned_vector)
+
+    # if linear_combination_of_Q_orthogonal_columns exist then we can find for each vector spanned by result_space
+    # a linear combination of columns of E so it is also belongs to E (need to check if it is epsilon close to vector in E)
+    print(linear_combination_of_Q_orthogonal_columns)
+
+    return result_space
 
 
 if __name__ == "__main__":
