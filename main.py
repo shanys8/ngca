@@ -4,13 +4,33 @@ import math
 from numpy import linalg as LA
 from scipy import linalg
 from scipy import stats
+# from scipy.cluster.vq import whiten
+import seaborn as sns
 
 import pandas as pd
 from sklearn.ensemble import RandomForestRegressor
 import matplotlib.pyplot as plt
 from sklearn.feature_selection import SelectFromModel
-from utils.mnist_reader import load_mnist
 
+
+def plotDataAndCov(data):
+    ACov = np.cov(data, rowvar=False, bias=True)
+    print('Covariance matrix:\n', ACov)
+    # fig, ax = plt.subplots(nrows=1, ncols=2)
+    # fig.set_size_inches(10, 10)
+    # # Choosing the colors
+    # cmap = sns.color_palette("GnBu", 10)
+    # sns.heatmap(ACov, cmap=cmap, vmin=0)
+    # ax1 = plt.subplot(2, 2, 2)
+    # # data can include the colors
+    # if data.shape[1] == 3:
+    #     c = data[:, 2]
+    # else:
+    #     c = "#0A98BE"
+    # ax1.scatter(data[:, 0], data[:, 1], c=c, s=40)
+    # # Remove the top and right axes from the data plot
+    # ax1.spines['right'].set_visible(False)
+    # ax1.spines['top'].set_visible(False)
 
 def print_matrix(matrix):
     s = [[str(e) for e in row] for row in matrix]
@@ -19,6 +39,39 @@ def print_matrix(matrix):
     table = [fmt.format(*row) for row in s]
     print('\n'.join(table))
 
+
+# def whiten(X, fudge=1E-18):
+#
+#    # the matrix X should be observations-by-components
+#
+#    # get the covariance matrix
+#    Xcov = np.dot(X.T,X)
+#
+#    # eigenvalue decomposition of the covariance matrix
+#    d, V = np.linalg.eigh(Xcov)
+#
+#    # a fudge factor can be used so that eigenvectors associated with
+#    # small eigenvalues do not get overamplified.
+#    D = np.diag(1. / np.sqrt(d+fudge))
+#
+#    # whitening matrix
+#    W = np.dot(np.dot(V, D), V.T)
+#
+#    # multiply by the whitening matrix
+#    X_white = np.dot(X, W)
+#
+#    return X_white
+
+def svd_whiten(X):
+
+    U, s, Vt = np.linalg.svd(X, full_matrices=False)
+
+    # U and Vt are the singular matrices, and s contains the singular values.
+    # Since the rows of both U and Vt are orthonormal vectors, then U * Vt
+    # will be white
+    X_white = np.dot(U, Vt)
+
+    return X_white
 
 def compute_matrix_phi(samples, samples_copy, alpha):
     return (1 / compute_z_phi(samples, alpha)) * \
@@ -78,37 +131,71 @@ def polynom(degree_r, n_param, epsilon_param, delta_param, D_param, K_param):
 
 def generate_gaussian_subspace(rows, cols):
     mu, sigma = 0, 1  # mean and standard deviation
+    np.random.seed(1234)
     return np.random.normal(mu, sigma, (rows, cols))
 
 
-def generate_samples(G, N, n, d):
+def center(X):
+    newX = X - np.mean(X, axis = 0)
+    return newX
+
+def standardize(X):
+    newX = center(X)/np.std(X, axis = 0)
+    return newX
+
+
+def decorrelate(X):
+    newX = center(X)
+    cov = X.T.dot(X)/float(X.shape[0])
+    # Calculate the eigenvalues and eigenvectors of the covariance matrix
+    eigVals, eigVecs = np.linalg.eig(cov)
+    # Apply the eigenvectors to X
+    decorrelated = X.dot(eigVecs)
+    return decorrelated
+
+
+def whiten(X):
+    # newX = center(X)
+    cov = X.T.dot(X)/float(X.shape[0])
+    # Calculate the eigenvalues and eigenvectors of the covariance matrix
+    eigVals, eigVecs = np.linalg.eig(cov)
+    # Apply the eigenvectors to X
+    decorrelated = X.dot(eigVecs)
+    # Rescale the decorrelated data
+    whitened = decorrelated / np.sqrt(eigVals + 1e-5)
+    return whitened
+
+
+def generate_isotropic_samples(G, N, n, d):
     Q, _ = np.linalg.qr(G)  # QR decomposition from Gaussian Matrix size: n X (n-d)
-    # Q_orthogonal = linalg.orth(Q)   # Orthonormal subspace for Q size: n X d
+    Q_orthogonal = orthogonal_complement(Q, normalize=True)  # subspace orthogonal to Q - non gaussian Matrix size: n X d
 
-    # print('Q')
-    # print_matrix(Q)
-    Q_orthogonal = orthogonal_complement(Q, normalize=True)
-
-    # print('Q_orthogonal')
-    # print_matrix(Q_orthogonal)
     samples = np.empty((n, 0), float)
     samples_copy = np.empty((n, 0), float)
 
+    # Samples should be of the isotripic model
+
     for _ in range(N):
-        sample = stats.zscore(np.dot(Q, np.random.rand(n - d, 1)) + \
-                              np.dot(Q_orthogonal, np.random.rand(d, 1)))
-
-        # TODO sample should be of the isotripic model
-        print(np.dot(sample, sample.T))  # should by eye
-
+        # each sample should have mean zero
+        sample = np.dot(Q, np.random.rand(n - d, 1)) + np.dot(Q_orthogonal, np.random.rand(d, 1))
         samples = np.append(samples, sample, axis=1)
 
+    whiten_samples = whiten(center(samples))
+    
+    # # verify that covariance is I
+    # print('samples matrix cov')
+    # plotDataAndCov(samples)
+    # whiten_samples = whiten(center(samples))
+    # print('whiten sample covariance matrix')
+    # plotDataAndCov(whiten_samples)
+
     for _ in range(N):
-        sample = stats.zscore(np.dot(Q, np.random.rand(n - d, 1)) + \
-                              np.dot(Q_orthogonal, np.random.rand(d, 1)))
+        sample = np.dot(Q, np.random.rand(n - d, 1)) + np.dot(Q_orthogonal, np.random.rand(d, 1))
         samples_copy = np.append(samples_copy, sample, axis=1)
 
-    return samples, samples_copy
+    whiten_samples_copy = whiten(center(samples_copy))
+
+    return whiten_samples, whiten_samples_copy
 
 
 def orthogonal_complement(x, normalize=True, threshold=1e-15):
@@ -150,7 +237,7 @@ def main():
     delta = 0.4  # probability 1-delta to success
     D = 3  # deviation from gaussian moments
     K = 1  # sub gaussian norm max bound
-    r = 4  # polynom degree - calculation D from r
+    r = 2  # polynom degree - calculation D from r
     alpha1 = 0.3
     alpha2 = 0.4
     beta1 = 0.5
@@ -160,7 +247,11 @@ def main():
 
     G = generate_gaussian_subspace(n, n - d)
 
-    samples, samples_copy = generate_samples(G, N, n, d)
+    # verify that G is gaussian is we expect
+    # sns.distplot(G[:, 0], color="#53BB04")
+    # plt.show()
+
+    samples, samples_copy = generate_isotropic_samples(G, N, n, d)
 
     # Calculate matrices
     matrix_phi = compute_matrix_phi(samples, samples_copy, alpha1) #TODO bug - return integer instead of matrix
