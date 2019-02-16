@@ -78,13 +78,11 @@ def get_matrix_relevant_eigenvectors(matrix, gaussian_eigenvalue, threshold):
     while i < len(eigenvalues):
         if math.fabs(eigenvalues[i] - gaussian_eigenvalue) > threshold:
             relevant_eigenvectors = np.append(relevant_eigenvectors, eigenvectors[:, i][:, np.newaxis], axis=1)
-
         i += 1
 
     return relevant_eigenvectors
 
 
-# check whether this is a vector that belongs to both eigenspaces e1, e2
 def union_subspace(e1, e2):
     return np.concatenate((e1, e2), axis=1)
 
@@ -116,7 +114,27 @@ def whiten(X):
     return whitened
 
 
-def generate_isotropic_samples(Q, Q_orthogonal, N, n, d):
+def generate_synthetic_isotropic_samples(N, n, d):
+
+    G = generate_gaussian_subspace(n, n - d)
+
+    # verify that G is gaussian is we expect
+    # sns.distplot(G[:, 0], color="#53BB04")
+    # plt.show()
+
+    # generate gaussian subspace
+    Q, _ = np.linalg.qr(G)  # QR decomposition from Gaussian Matrix size: n X (n-d)
+
+    # generate subspace orthogonal to the gaussian (non gaussian) - Matrix size: n X d (REQUESTED E)
+    Q_orthogonal = orthogonal_complement(Q, normalize=True)
+
+    # print('\n Q')
+    # print_matrix(Q)
+    # print('\n Q_orthogonal')
+    # print_matrix(Q_orthogonal)
+
+    assert_all_columns_unit_vectors(Q_orthogonal)
+
     samples = np.empty((n, 0), float)
     samples_copy = np.empty((n, 0), float)
 
@@ -135,7 +153,10 @@ def generate_isotropic_samples(Q, Q_orthogonal, N, n, d):
 
     whiten_samples_copy = whiten(center(samples_copy))
 
-    return whiten_samples, whiten_samples_copy
+    assert_isotropic_model(whiten_samples)
+    assert_isotropic_model(whiten_samples_copy)
+
+    return whiten_samples, whiten_samples_copy, Q_orthogonal
 
 
 def orthogonal_complement(x: object, normalize: object = True, threshold: object = 1e-15) -> object:
@@ -163,6 +184,9 @@ def orthogonal_complement(x: object, normalize: object = True, threshold: object
     if normalize:
         k_oc = oc.shape[1]
         oc = oc.dot(np.linalg.inv(oc[:k_oc, :]))
+
+    oc, _ = np.linalg.qr(oc)
+
     return oc
 
 
@@ -170,54 +194,16 @@ def assert_isotropic_model(X):
     assert (np.allclose(np.mean(X, axis=0), np.zeros(X.shape[1]), rtol=1.e-2,
                         atol=1.e-2))  # each column vector should have mean zero
     cov_X = np.cov(X, rowvar=False, bias=True)
-    print_matrix(cov_X)
+    # print_matrix(cov_X)
     assert (cov_X.shape[0] == cov_X.shape[1]) and np.allclose(cov_X, np.eye(cov_X.shape[0]), rtol=1.e-1,
                                                               atol=1.e-1)  # covariance matrix should by identity
 
 
-def main():
-    # phi - represent the X 2-norm gaussian measure
-    # psi - represent the <X,X'> gaussian measure
-
-    # input
-    n = 4  # dimension
-    d = 2  # subspace dimension
-    epsilon = 0.2  # how close result vectors will be from E
-    delta = 0.4  # probability 1-delta to success
-    D = 3  # deviation from gaussian moments
-    K = 1  # sub gaussian norm max bound
-    r = 2  # polynom degree - calculation D from r
-    alpha1 = 0.3
-    alpha2 = 0.4
-    beta1 = 0.5
-    beta2 = 0.6
-
-    N = polynom(r, n, 1 / epsilon, math.log(1 / delta), 1 / D, K)  # number of samples to generate
-
-    G = generate_gaussian_subspace(n, n - d)
-
-    # verify that G is gaussian is we expect
-    # sns.distplot(G[:, 0], color="#53BB04")
-    # plt.show()
-
-    # generate gaussian subspace
-    Q, _ = np.linalg.qr(G)  # QR decomposition from Gaussian Matrix size: n X (n-d)
-
-    # generate subspace orthogonal to the gaussian (non gaussian) - Matrix size: n X d (REQUESTED E)
-    Q_orthogonal = orthogonal_complement(Q, normalize=True)
-
-    samples, samples_copy = generate_isotropic_samples(Q, Q_orthogonal, N, n, d)
-
-    assert_isotropic_model(samples)
-    assert_isotropic_model(samples_copy)
-
+def run_ngca_algorithm(samples, samples_copy, alpha1, alpha2, beta1, beta2):
     # Calculate matrices
     matrix_phi = compute_matrix_phi(samples, samples_copy, alpha1)
-    print('\nmatrix_phi')
-    print_matrix(matrix_phi)
+
     matrix_psi = compute_matrix_psi(samples, samples_copy, alpha2)
-    print('\nmatrix_psi')
-    print_matrix(matrix_psi)
 
     # Calculate the gaussian eigenvalue for each matrix
     gaussian_phi_eigenvalue = calculate_gaussian_phi_eigenvalue(alpha1)
@@ -233,31 +219,94 @@ def main():
     matrix_psi_relevant_eigenvectors = get_matrix_relevant_eigenvectors(matrix_psi,
                                                                         gaussian_psi_eigenvalue, beta2)
 
+    print('\nmatrix_phi_relevant_eigenvectors')
+    print_matrix(matrix_phi_relevant_eigenvectors)
+
+    print('\nmatrix_psi_relevant_eigenvectors')
+    print_matrix(matrix_psi_relevant_eigenvectors)
+
     # Calculate E space - non gaussian space
     result_space = union_subspace(matrix_phi_relevant_eigenvectors, matrix_psi_relevant_eigenvectors)
 
+    assert_all_columns_unit_vectors(result_space)
+
+    return result_space
 
 
-    print('\nresult_space')
-    print_matrix(result_space)
-
+def assert_all_columns_unit_vectors(matrix):
     i = 0
-    random_spanned_vector = np.zeros((result_space.shape[0], 1), float)
-    while i < result_space.shape[1]:
-        random_spanned_vector += np.random.random_sample() * result_space[:, i][:, np.newaxis]
+    while i < matrix.shape[1]:
+        assert (is_unit_vector(matrix[:, i][:, np.newaxis]))
         i += 1
 
 
-    print('\nE')
-    print_matrix(Q_orthogonal)
+def is_unit_vector(vector):
+    return math.isclose(LA.norm(vector),  1.0, rel_tol=1e-2)
 
-    linear_combination_of_Q_orthogonal_columns = np.linalg.lstsq(Q_orthogonal, random_spanned_vector)
 
-    # if linear_combination_of_Q_orthogonal_columns exist then we can find for each vector spanned by result_space
+def check_if_epsilon_close_to_vector_in_subspace(vector, subspace):
+    i = 0
+    while i < subspace.shape[1]:
+        col = subspace[:, i][:, np.newaxis]
+        dist = LA.norm(vector - col)
+        print('for vector ', vector, ' dist is ', dist)
+        i += 1
+
+
+def validate_approximation(approx_subspace, subspace):
+    print('validate')
+    # i = 0
+    # while i < approx_subspace.shape[1]:
+    #     col = approx_subspace[:, i][:, np.newaxis]
+    #     check_if_epsilon_close_to_vector_in_subspace(col, subspace)
+    #     i += 1
+    # i = 0
+    # random_spanned_vector = np.zeros((approximate_E.shape[0], 1), float)
+    # while i < approximate_E.shape[1]:
+    #     random_spanned_vector += np.random.random_sample() * approximate_E[:, i][:, np.newaxis]
+    #     i += 1
+
+    # linear_combination_of_Q_orthogonal_columns = np.linalg.lstsq(E, random_spanned_vector)
+
+    # if linear_combination_of_Q_orthogonal_columns exist then we can find for each vector spanned by approximate_E
     # a linear combination of columns of E so it is also belongs to E (need to check if it is epsilon close to vector in E)
-    print(linear_combination_of_Q_orthogonal_columns)
+    # print(linear_combination_of_Q_orthogonal_columns)
 
-    return result_space
+
+
+def main():
+    # phi - represent the X 2-norm gaussian measure
+    # psi - represent the <X,X'> gaussian measure
+
+    # input
+    n = 4  # dimension
+    d = 2  # subspace dimension
+    epsilon = 0.2  # how close result vectors will be from E
+    delta = 0.4  # probability 1-delta to success
+    D = 3  # deviation from gaussian moments
+    K = 1  # sub gaussian norm max bound
+    r = 2  # polynom degree - calculation D from r
+    alpha1 = 2
+    alpha2 = 2
+    beta1 = 0.5
+    beta2 = 0.5
+
+    N = polynom(r, n, 1 / epsilon, math.log(1 / delta), 1 / D, K)  # number of samples to generate
+
+    samples, samples_copy, E = generate_synthetic_isotropic_samples(N, n, d)
+
+    # Implementation of algorithm in the paper
+    approximate_E = run_ngca_algorithm(samples, samples_copy, alpha1, alpha2, beta1, beta2)
+
+    print('\napproximate_E')
+    print_matrix(approximate_E)
+
+    print('\nE')
+    print_matrix(E)
+
+    validate_approximation(approximate_E, E)
+
+    return approximate_E
 
 
 if __name__ == "__main__":
