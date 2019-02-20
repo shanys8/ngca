@@ -1,5 +1,4 @@
 import numpy as np
-import pandas as pd
 import math
 from numpy import linalg as LA
 from scipy import linalg
@@ -8,11 +7,9 @@ import seaborn as sns
 from numpy.linalg import matrix_power
 from scipy.linalg import fractional_matrix_power
 from random import gauss
-
-import pandas as pd
-from sklearn.ensemble import RandomForestRegressor
+from sklearn.decomposition import PCA as sklearnPCA
 import matplotlib.pyplot as plt
-from sklearn.feature_selection import SelectFromModel
+from sklearn import preprocessing
 
 
 def plotDataAndCov(data):
@@ -48,30 +45,22 @@ def generate_synthetic_isotropic_samples(N, n, d):
     # plt.show()
 
     # generate gaussian subspace
-    Q, _ = np.linalg.qr(G)  # QR decomposition from Gaussian Matrix size: n X (n-d)
+    Q, _ = LA.qr(G)  # QR decomposition from Gaussian Matrix size: n X (n-d)
 
     # generate subspace orthogonal to the gaussian (non gaussian) - Matrix size: n X d (REQUESTED E)
     Q_orthogonal = orthogonal_complement(Q, normalize=True)
-
-    # print('\n Q')
-    # print_matrix(Q)
-    # print('\n Q_orthogonal')
-    # print_matrix(Q_orthogonal)
 
     assert_all_columns_unit_vectors(Q_orthogonal)
 
     samples = np.empty((n, 0), float)
 
     # Samples should be of the isotripic model
-
     for _ in range(N):
         # each sample should have mean zero
-        sample = np.dot(Q, np.random.rand(n - d, 1)) + np.dot(Q_orthogonal, np.random.rand(d, 1))
+        sample = np.dot(Q, np.random.rand(n - d, 1)) + np.dot(Q_orthogonal, np.random.rand(d, 1))  # X = S + N
         samples = np.append(samples, sample, axis=1)
 
     centered_samples = center(samples)
-
-    # assert_isotropic_model(whiten_samples)
 
     return centered_samples, Q_orthogonal
 
@@ -128,16 +117,17 @@ def is_unit_vector(vector):
 
 
 def generate_derivative_lambdas(num_of_samples_in_range):
+
     sigma_values = np.sqrt(get_values_list_in_rage(0.5, 5, num_of_samples_in_range))
     a_values = get_values_list_in_rage(0, 4, num_of_samples_in_range)
     b_values = get_values_list_in_rage(0, 5, num_of_samples_in_range)
 
     gauss_pow3_derivate = lambda sigma: lambda z: 3 * math.pow(z, 2) * math.exp(((-1)*math.pow(z, 2)) / (2*math.pow(sigma, 2))) + math.pow(z, 3) * (-1) * z * (1 / math.pow(sigma, 2)) * math.exp(((-1)*math.pow(z, 2)) / (2*math.pow(sigma, 2)))
     list_of_gauss_pow3_derivative_lambdas = [gauss_pow3_derivate(sigma) for sigma in sigma_values]
-    Fourier_cos = lambda a: lambda z: a * math.cos(a*z)
-    Fourier_sin = lambda a: lambda z: (-1) * a * math.sin(a*z)
-    list_of_fourier_sin_derivate_lambdas = [Fourier_cos(a) for a in a_values]
-    list_of_fourier_cos_derivate_lambdas = [Fourier_sin(a) for a in a_values]
+    Fourier_sin_derivative = lambda a: lambda z: a * math.cos(a*z)
+    Fourier_cos_derivative = lambda a: lambda z: (-1) * a * math.sin(a*z)
+    list_of_fourier_sin_derivate_lambdas = [Fourier_sin_derivative(a) for a in a_values]
+    list_of_fourier_cos_derivate_lambdas = [Fourier_cos_derivative(a) for a in a_values]
     hyperbolic_tangent_derivate = lambda b: lambda z: b * (1.0 - np.tanh(b*z) ** 2)
     list_of_hyperbolic_tangent_derivate_ambdas = [hyperbolic_tangent_derivate(b) for b in b_values]
 
@@ -147,6 +137,7 @@ def generate_derivative_lambdas(num_of_samples_in_range):
 
 
 def generate_lambdas(num_of_samples_in_range):
+
     sigma_values = np.sqrt(get_values_list_in_rage(0.5, 5, num_of_samples_in_range))
     a_values = get_values_list_in_rage(0, 4, num_of_samples_in_range)
     b_values = get_values_list_in_rage(0, 5, num_of_samples_in_range)
@@ -181,8 +172,6 @@ def calculate_beta(samples, lambda_function, derivative_lambda_function, curr_w)
 
     result = (1 / len(samples)) * result
     return result
-    # return (1/len(samples)) * np.array([((lambda_function(np.dot(curr_w, sample[:, np.newaxis])) * sample[:, np.newaxis]) - (derivative_lambda_function(np.dot(curr_w, sample[:, np.newaxis])) * curr_w))
-    #                                     for sample in samples.T]).sum()
 
 
 def calculate_N(samples, lambda_function, derivative_lambda_function, curr_w, curr_beta):
@@ -190,8 +179,8 @@ def calculate_N(samples, lambda_function, derivative_lambda_function, curr_w, cu
     return res - math.pow(LA.norm(curr_beta), 2)
 
 
+# TODO - make more efficient: matrix[np.all([LA.norm(x) > epsilon], axis=1)]
 def remove_small_vectors(matrix, epsilon):
-    # TODO - make more efficient: matrix[np.all([LA.norm(x) > epsilon], axis=1)]
     result = np.empty((matrix.shape[0], 0), float)
     i = 0
     while i < len(matrix.T):
@@ -202,11 +191,13 @@ def remove_small_vectors(matrix, epsilon):
 
 
 def run_pca(V, requested_dimension):
-    #TODO implement PCA - take first requested_dimension vectors
-    return V
+    sklearn_pca = sklearnPCA(n_components=requested_dimension, whiten=True)
+    # (n_samples, n_components)
+    sklearn_transf = sklearn_pca.fit_transform(V)
+    return sklearn_transf
 
 
-def run_ngca_algorithm(samples, samples_dimension, T, epsilon, num_of_samples_in_range, requested_dimension, sigma_circumflex):
+def run_ngca_algorithm(samples, samples_dimension, T, epsilon, num_of_samples_in_range, requested_dimension):
     lambdas = generate_lambdas(num_of_samples_in_range)
     derivative_lambdas = generate_derivative_lambdas(num_of_samples_in_range)
     w = np.empty((samples_dimension, 0), float)
@@ -232,10 +223,11 @@ def run_ngca_algorithm(samples, samples_dimension, T, epsilon, num_of_samples_in
     V = remove_small_vectors(v, epsilon)
 
     # PCA
-
     pca_result = run_pca(V, requested_dimension)
 
-    result = unwhiten(pca_result, sigma_circumflex)
+    normalize_pca_result = preprocessing.normalize(pca_result, axis=0, norm='l2')
+
+    result = unwhiten(normalize_pca_result)
 
     return result
 
@@ -244,37 +236,35 @@ def get_values_list_in_rage(min, max, num_of_samples):
     return np.arange(min, max, (max-min)/num_of_samples)
 
 
-def whiten_covariance(samples, sigma_circumflex):
+def whiten_covariance(samples):
     # TODO check why makes matrix complex
     return samples
-    # return np.dot(fractional_matrix_power(sigma_circumflex, -0.5), samples)
+    # return np.dot(fractional_matrix_power(np.cov(samples), 0.5), samples)
 
 
-def unwhiten(samples, sigma_circumflex):
+def unwhiten(samples):
     # TODO check why makes matrix complex
-    return np.dot(fractional_matrix_power(sigma_circumflex, 0.5), samples)
+    return samples
+    # return np.dot(fractional_matrix_power(np.cov(samples), -0.5), samples)
 
 
 def main():
 
     # input
-    n = 4  # dimension
-    d = 2  # subspace dimension
+    n = 5  # dimension (number of features)
+    d = 2  # subspace dimension - requested dimension of NG data
     N = 3  # number of samples to generate
-    m = 3  # requested dimension of NG data
     epsilon = 1.5
     T = 10
-    num_of_samples_in_range = 10
-
+    num_of_samples_in_range = 3  # range divided into num
 
     samples, NG_subspace = generate_synthetic_isotropic_samples(N, n, d)
 
-    sigma_circumflex = np.cov(samples)
 
-    whiten_samples = whiten_covariance(samples, sigma_circumflex)
+    whiten_samples = whiten_covariance(samples)
 
     # Implementation of algorithm in the paper
-    approximate_NG_subspace = run_ngca_algorithm(whiten_samples, n, T, epsilon, num_of_samples_in_range, m, sigma_circumflex)
+    approximate_NG_subspace = run_ngca_algorithm(whiten_samples, n, T, epsilon, num_of_samples_in_range, d)
 
     print('\napproximate_NG_subspace')
     print_matrix(approximate_NG_subspace)
