@@ -162,20 +162,26 @@ def generate_unit_vector(dimension):
     return np.array([x/mag for x in vec])[:, np.newaxis]
 
 
+def sample_calculate(sample, lambda_function, derivative_lambda_function, curr_w):
+    res1 = lambda_function(np.dot(curr_w, sample[:, np.newaxis])) * sample[:, np.newaxis]
+    res2 = derivative_lambda_function(np.dot(curr_w, sample[:, np.newaxis])) * curr_w.T
+    return res1 - res2
+
+
 def calculate_beta(samples, lambda_function, derivative_lambda_function, curr_w):
     result = np.zeros((samples.shape[0], 1), float)
 
     for sample in samples.T:
-        res1 = lambda_function(np.dot(curr_w, sample[:, np.newaxis])) * sample[:, np.newaxis]
-        res2 = derivative_lambda_function(np.dot(curr_w, sample[:, np.newaxis])) * curr_w.T
-        result += (res1 - res2)
+        result += sample_calculate(sample, lambda_function, derivative_lambda_function, curr_w)
 
     result = (1 / len(samples)) * result
     return result
 
 
 def calculate_N(samples, lambda_function, derivative_lambda_function, curr_w, curr_beta):
-    res = (1/len(samples)) * np.array([math.pow(LA.norm((lambda_function(np.dot(curr_w, sample[:, np.newaxis])) * sample[:, np.newaxis]) - (derivative_lambda_function(np.dot(curr_w, sample[:, np.newaxis])) * curr_w.T[:, np.newaxis])), 2) for sample in samples.T]).sum()
+    res = (1/len(samples)) * \
+          np.array([math.pow(LA.norm((sample_calculate(sample, lambda_function, derivative_lambda_function, curr_w))), 2)
+                    for sample in samples.T]).sum()
     return res - math.pow(LA.norm(curr_beta), 2)
 
 
@@ -184,6 +190,7 @@ def remove_small_vectors(matrix, epsilon):
     result = np.empty((matrix.shape[0], 0), float)
     i = 0
     while i < len(matrix.T):
+        print('norm {}'.format(LA.norm(matrix[:, i][np.newaxis])))
         if LA.norm(matrix[:, i][np.newaxis]) > epsilon:
             result = np.append(result, matrix[:, i][np.newaxis].T, axis=1)
         i += 1
@@ -240,7 +247,9 @@ def run_ngca_algorithm(samples, samples_dimension, T, epsilon, num_of_samples_in
 
 
     # Pull back the original space
-    result = unwhiten(pca_result)
+    result = unwhiten_covariance(pca_result)
+
+    normalize_result = preprocessing.normalize(pca_result, axis=0, norm='l2')
 
     return result
 
@@ -257,31 +266,28 @@ def whiten_covariance(samples):
     cov = np.cov(samples)
     eigenvalues, _ = LA.eigh(cov)
     assert_all_non_negative(eigenvalues)
-    return np.dot(fractional_matrix_power(cov, 0.5), samples)
+    return np.dot(fractional_matrix_power(cov, -0.5), samples)
 
 
-def unwhiten(samples):
-    # TODO check why makes matrix complex
-    # return np.dot(np.cov(samples), samples)
+def unwhiten_covariance(samples):
     return np.dot(fractional_matrix_power(np.cov(samples), -0.5), samples)
 
 
 def main():
 
+    #  compare errors and run times between two algorithms
     # input
-    n = 5  # dimension (number of features)
+    n = 5  # dimension (number of features) should be 10
     d = 2  # subspace dimension - requested dimension of NG data
-    N = 10  # number of samples to generate
-    epsilon = 1.5
-    T = 10
-    num_of_samples_in_range = 3  # range divided into num
+    N = 10  # number of samples to generate should be 1000
+    epsilon = 0.4  # should be 1.5
+    T = 10  # should be 10
+    num_of_samples_in_range = 3  # range divided into num - should be 1000
 
     samples, NG_subspace = generate_synthetic_isotropic_samples(N, n, d)
 
-
     # Implementation of algorithm in the paper
     approximate_NG_subspace = run_ngca_algorithm(samples, n, T, epsilon, num_of_samples_in_range, d)
-    # pca_result = preprocessing.normalize(pca_result, axis=0, norm='l2')
 
     print('\napproximate_NG_subspace')
     print_matrix(approximate_NG_subspace)
