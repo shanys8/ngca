@@ -247,11 +247,11 @@ def run_ngca_algorithm(samples, samples_dimension, T, epsilon, num_of_samples_in
 
 
     # Pull back the original space
-    result = unwhiten_covariance(pca_result)
+    unwhiten_result = unwhiten_covariance(pca_result)
 
-    normalize_result = preprocessing.normalize(pca_result, axis=0, norm='l2')
+    normalize_result = preprocessing.normalize(unwhiten_result, axis=0, norm='l2')
 
-    return result
+    return normalize_result
 
 
 def get_values_list_in_rage(min, max, num_of_samples):
@@ -294,6 +294,9 @@ def main():
 
     print('\nNG_subspace')
     print_matrix(NG_subspace)
+
+    print('\nDistance between sub spaces')
+    print(LA.norm(np.dot(approximate_NG_subspace, approximate_NG_subspace.T) - np.dot(NG_subspace, NG_subspace.T), ord='fro'))
 
     return approximate_NG_subspace
 
