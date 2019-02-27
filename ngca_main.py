@@ -12,6 +12,7 @@ from sklearn.ensemble import RandomForestRegressor
 import matplotlib.pyplot as plt
 from sklearn.feature_selection import SelectFromModel
 
+import utilities
 
 def plotDataAndCov(data):
     ACov = np.cov(data, rowvar=False, bias=True)
@@ -128,11 +129,6 @@ def generate_synthetic_isotropic_samples(N, n, d):
     # generate subspace orthogonal to the gaussian (non gaussian) - Matrix size: n X d (REQUESTED E)
     Q_orthogonal = orthogonal_complement(Q, normalize=True)
 
-    # print('\n Q')
-    # print_matrix(Q)
-    # print('\n Q_orthogonal')
-    # print_matrix(Q_orthogonal)
-
     assert_all_columns_unit_vectors(Q_orthogonal)
 
     samples = np.empty((n, 0), float)
@@ -142,21 +138,20 @@ def generate_synthetic_isotropic_samples(N, n, d):
 
     for _ in range(N):
         # each sample should have mean zero
-        sample = np.dot(Q, np.random.rand(n - d, 1)) + np.dot(Q_orthogonal, np.random.rand(d, 1))
+        sample = np.dot(Q, np.random.randn(n - d, 1)) + np.dot(Q_orthogonal, (np.random.rand(d, 1) - 0.5))  # X = S + N
         samples = np.append(samples, sample, axis=1)
 
-    whiten_samples = whiten(center(samples))
+    # whiten_samples = whiten(center(samples))
 
     for _ in range(N):
-        sample = np.dot(Q, np.random.rand(n - d, 1)) + np.dot(Q_orthogonal, np.random.rand(d, 1))
+        sample = np.dot(Q, np.random.randn(n - d, 1)) + np.dot(Q_orthogonal, (np.random.rand(d, 1) - 0.5))  # X = S + N
         samples_copy = np.append(samples_copy, sample, axis=1)
 
-    whiten_samples_copy = whiten(center(samples_copy))
+    # whiten_samples_copy = whiten(center(samples_copy))
+    # assert_isotropic_model(whiten_samples)
+    # assert_isotropic_model(whiten_samples_copy)
 
-    assert_isotropic_model(whiten_samples)
-    assert_isotropic_model(whiten_samples_copy)
-
-    return whiten_samples, whiten_samples_copy, Q_orthogonal
+    return samples, samples_copy, Q_orthogonal
 
 
 def orthogonal_complement(x: object, normalize: object = True, threshold: object = 1e-15) -> object:
@@ -254,7 +249,10 @@ def check_if_epsilon_close_to_vector_in_subspace(vector, subspace):
 
 
 def validate_approximation(approx_subspace, subspace):
-    print('validate')
+    print('distance between approx and real subspace ')
+
+    print(utilities.subspace_distance(approx_subspace, subspace))
+
     # i = 0
     # while i < approx_subspace.shape[1]:
     #     col = approx_subspace[:, i][:, np.newaxis]
@@ -271,7 +269,6 @@ def validate_approximation(approx_subspace, subspace):
     # if linear_combination_of_Q_orthogonal_columns exist then we can find for each vector spanned by approximate_E
     # a linear combination of columns of E so it is also belongs to E (need to check if it is epsilon close to vector in E)
     # print(linear_combination_of_Q_orthogonal_columns)
-
 
 
 def main():

@@ -32,7 +32,8 @@ def generate_gaussian_subspace(rows, cols):
 
 
 def center(X):
-    newX = X - np.mean(X, axis=0)
+    print(np.mean(X, axis=1))
+    newX = X - np.mean(X, axis=1)
     return newX
 
 
@@ -56,13 +57,12 @@ def generate_synthetic_isotropic_samples(N, n, d):
 
     # Samples should be of the isotripic model
     for _ in range(N):
-        # each sample should have mean zero
-        sample = np.dot(Q, np.random.rand(n - d, 1)) + np.dot(Q_orthogonal, np.random.rand(d, 1))  # X = S + N
+        # each sample should have mean zero - np.dot(Q, np.random.randn(n - d, 1)) has zero expectancy (gaussian),
+        # np.random.rand(d, 1) is normalize by 0.5 - expectancy of random vector in range (0,1)
+        sample = np.dot(Q, np.random.randn(n - d, 1)) + np.dot(Q_orthogonal, (np.random.rand(d, 1) - 0.5))  # X = S + N
         samples = np.append(samples, sample, axis=1)
 
-    centered_samples = center(samples)
-
-    return centered_samples, Q_orthogonal
+    return samples, Q_orthogonal
 
 
 def orthogonal_complement(x: object, normalize: object = True, threshold: object = 1e-15) -> object:
@@ -190,44 +190,57 @@ def remove_small_vectors(matrix, epsilon):
     return result
 
 
-def run_pca(V, requested_dimension):
-    sklearn_pca = sklearnPCA(n_components=requested_dimension, whiten=True)
-    # (n_samples, n_components)
-    sklearn_transf = sklearn_pca.fit_transform(V)
-    return sklearn_transf
+def run_pca(v, requested_dimension):
+    sklearn_pca = sklearnPCA(n_components=requested_dimension, svd_solver='full')
+    # (n_samples, n_features)
+    sklearn_transf = sklearn_pca.fit_transform(v.T)
+    return sklearn_transf.T
 
 
 def run_ngca_algorithm(samples, samples_dimension, T, epsilon, num_of_samples_in_range, requested_dimension):
+
+    # Whitening
+    samples = whiten_covariance(samples)
+
+    # Prepare lambdas
     lambdas = generate_lambdas(num_of_samples_in_range)
     derivative_lambdas = generate_derivative_lambdas(num_of_samples_in_range)
+
+    # Init w, v
     w = np.empty((samples_dimension, 0), float)
     v = np.empty((samples_dimension, 0), float)
 
     k = 0
+
+    # Iterate on lambdas
     while k < len(lambdas):
         print('Running {} out of {}'.format(k, len(lambdas)))
         lambda_function = lambdas[k]
         derivative_lambda_function = derivative_lambdas[k]
         w0 = generate_unit_vector(samples_dimension)
         w = np.append(w, w0, axis=1)
+
+        # FastICA Loop
         t = 1
         while t <= T:
+            # Calculate beta(t)
             curr_beta = calculate_beta(samples, lambda_function, derivative_lambda_function, w[:, t-1][np.newaxis])
             w = np.append(w, np.divide(curr_beta, LA.norm(curr_beta)), axis=1)
             t += 1
+        # Calculate N(k)
         N = calculate_N(samples, lambda_function, derivative_lambda_function, w[:, T-1], curr_beta)
         v = np.append(v, (curr_beta * math.sqrt(len(samples) / (N + 1e-10))), axis=1)
         k += 1
 
-    # Threshold
-    V = remove_small_vectors(v, epsilon)
+    # Thresholding
+    v = remove_small_vectors(v, epsilon)
 
-    # PCA
-    pca_result = run_pca(V, requested_dimension)
+    # PCA step
+    pca_result = run_pca(v, requested_dimension)
 
-    normalize_pca_result = preprocessing.normalize(pca_result, axis=0, norm='l2')
 
-    result = unwhiten(normalize_pca_result)
+    # Pull back the original space
+    result = unwhiten(pca_result)
 
     return result
 
@@ -236,16 +249,21 @@ def get_values_list_in_rage(min, max, num_of_samples):
     return np.arange(min, max, (max-min)/num_of_samples)
 
 
+def assert_all_non_negative(items):
+    return all(item >= 0 for item in items)
+
+
 def whiten_covariance(samples):
-    # TODO check why makes matrix complex
-    return samples
-    # return np.dot(fractional_matrix_power(np.cov(samples), 0.5), samples)
+    cov = np.cov(samples)
+    eigenvalues, _ = LA.eigh(cov)
+    assert_all_non_negative(eigenvalues)
+    return np.dot(fractional_matrix_power(cov, 0.5), samples)
 
 
 def unwhiten(samples):
     # TODO check why makes matrix complex
-    return samples
-    # return np.dot(fractional_matrix_power(np.cov(samples), -0.5), samples)
+    # return np.dot(np.cov(samples), samples)
+    return np.dot(fractional_matrix_power(np.cov(samples), -0.5), samples)
 
 
 def main():
@@ -253,7 +271,7 @@ def main():
     # input
     n = 5  # dimension (number of features)
     d = 2  # subspace dimension - requested dimension of NG data
-    N = 3  # number of samples to generate
+    N = 10  # number of samples to generate
     epsilon = 1.5
     T = 10
     num_of_samples_in_range = 3  # range divided into num
@@ -261,10 +279,9 @@ def main():
     samples, NG_subspace = generate_synthetic_isotropic_samples(N, n, d)
 
 
-    whiten_samples = whiten_covariance(samples)
-
     # Implementation of algorithm in the paper
-    approximate_NG_subspace = run_ngca_algorithm(whiten_samples, n, T, epsilon, num_of_samples_in_range, d)
+    approximate_NG_subspace = run_ngca_algorithm(samples, n, T, epsilon, num_of_samples_in_range, d)
+    # pca_result = preprocessing.normalize(pca_result, axis=0, norm='l2')
 
     print('\napproximate_NG_subspace')
     print_matrix(approximate_NG_subspace)
