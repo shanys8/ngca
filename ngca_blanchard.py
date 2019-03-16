@@ -10,6 +10,7 @@ from random import gauss
 from sklearn.decomposition import PCA as sklearnPCA
 import matplotlib.pyplot as plt
 from sklearn import preprocessing
+import utilities
 
 
 def plotDataAndCov(data):
@@ -25,12 +26,6 @@ def print_matrix(matrix):
     print('\n'.join(table))
 
 
-def generate_gaussian_subspace(rows, cols):
-    mu, sigma = 0, 1  # mean and standard deviation
-    np.random.seed(1234)
-    return np.random.normal(mu, sigma, (rows, cols))
-
-
 def center(X):
     print(np.mean(X, axis=1))
     newX = X - np.mean(X, axis=1)
@@ -39,17 +34,11 @@ def center(X):
 
 def generate_synthetic_isotropic_samples(N, n, d):
 
-    G = generate_gaussian_subspace(n, n - d)
-
-    # verify that G is gaussian is we expect
-    # sns.distplot(G[:, 0], color="#53BB04")
-    # plt.show()
-
-    # generate gaussian subspace
+    G = utilities.generate_gaussian_subspace(n, n - d)
     Q, _ = LA.qr(G)  # QR decomposition from Gaussian Matrix size: n X (n-d)
 
     # generate subspace orthogonal to the gaussian (non gaussian) - Matrix size: n X d (REQUESTED E)
-    Q_orthogonal = orthogonal_complement(Q, normalize=True)
+    Q_orthogonal = utilities.orthogonal_complement(Q, normalize=True)
 
     assert_all_columns_unit_vectors(Q_orthogonal)
 
@@ -65,35 +54,6 @@ def generate_synthetic_isotropic_samples(N, n, d):
     return samples, Q_orthogonal
 
 
-def orthogonal_complement(x: object, normalize: object = True, threshold: object = 1e-15) -> object:
-    """Compute orthogonal complement of a matrix
-
-    this works along axis zero, i.e. rank == column rank,
-    or number of rows > column rank
-    otherwise orthogonal complement is empty
-
-    TODO possibly: use normalize='top' or 'bottom'
-
-    """
-    x = np.asarray(x)
-    r, c = x.shape
-    if r < c:
-        import warnings
-        warnings.warn('fewer rows than columns', UserWarning)
-
-    # we assume svd is ordered by decreasing singular value, o.w. need sort
-    s, v, d = np.linalg.svd(x)
-    rank = (v > threshold).sum()
-
-    oc = s[:, rank:]
-
-    if normalize:
-        k_oc = oc.shape[1]
-        oc = oc.dot(np.linalg.inv(oc[:k_oc, :]))
-
-    oc, _ = np.linalg.qr(oc)
-
-    return oc
 
 
 def assert_isotropic_model(X):
@@ -190,7 +150,7 @@ def remove_small_vectors(matrix, epsilon):
     result = np.empty((matrix.shape[0], 0), float)
     i = 0
     while i < len(matrix.T):
-        print('norm {}'.format(LA.norm(matrix[:, i][np.newaxis])))
+        # print('norm {}'.format(LA.norm(matrix[:, i][np.newaxis])))
         if LA.norm(matrix[:, i][np.newaxis]) > epsilon:
             result = np.append(result, matrix[:, i][np.newaxis].T, axis=1)
         i += 1
@@ -204,6 +164,11 @@ def run_pca(v, requested_dimension):
     return sklearn_transf.T
 
 
+# Paper notations:
+# num_of_samples_in_range: L
+# requested_dimension: m
+# epsilon: epsilon
+# samples_dimension: d
 def run_ngca_algorithm(samples, samples_dimension, T, epsilon, num_of_samples_in_range, requested_dimension):
 
     # Whitening
@@ -221,7 +186,7 @@ def run_ngca_algorithm(samples, samples_dimension, T, epsilon, num_of_samples_in
 
     # Iterate on lambdas
     while k < len(lambdas):
-        print('Running {} out of {}'.format(k, len(lambdas)))
+        # print('Running {} out of {}'.format(k, len(lambdas)))
         lambda_function = lambdas[k]
         derivative_lambda_function = derivative_lambdas[k]
         w0 = generate_unit_vector(samples_dimension)
@@ -245,13 +210,12 @@ def run_ngca_algorithm(samples, samples_dimension, T, epsilon, num_of_samples_in
     # PCA step
     pca_result = run_pca(v, requested_dimension)
 
-
     # Pull back the original space
     unwhiten_result = unwhiten_covariance(pca_result)
 
-    normalize_result = preprocessing.normalize(unwhiten_result, axis=0, norm='l2')
+    # normalize_result = preprocessing.normalize(unwhiten_result, axis=0, norm='l2')
 
-    return normalize_result
+    return unwhiten_result
 
 
 def get_values_list_in_rage(min, max, num_of_samples):
@@ -292,11 +256,13 @@ def main():
     print('\napproximate_NG_subspace')
     print_matrix(approximate_NG_subspace)
 
-    print('\nNG_subspace')
-    print_matrix(NG_subspace)
+    # print('\nNG_subspace')
+    # print_matrix(NG_subspace)
 
-    print('\nDistance between sub spaces')
-    print(LA.norm(np.dot(approximate_NG_subspace, approximate_NG_subspace.T) - np.dot(NG_subspace, NG_subspace.T), ord='fro'))
+    # print('\nDistance between sub spaces')
+    # print(LA.norm(np.dot(approximate_NG_subspace, approximate_NG_subspace.T) - np.dot(NG_subspace.T, NG_subspace),
+    #               ord='fro'))
+    # print(utilities.blanchard_subspace_distance(approximate_NG_subspace, NG_subspace))
 
     return approximate_NG_subspace
 

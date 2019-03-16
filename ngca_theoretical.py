@@ -92,12 +92,6 @@ def polynom(degree_r, n_param, epsilon_param, delta_param, D_param, K_param):
     return 2
 
 
-def generate_gaussian_subspace(rows, cols):
-    mu, sigma = 0, 1  # mean and standard deviation
-    np.random.seed(1234)
-    return np.random.normal(mu, sigma, (rows, cols))
-
-
 def center(X):
     newX = X - np.mean(X, axis=0)
     return newX
@@ -117,17 +111,11 @@ def whiten(X):
 
 def generate_synthetic_isotropic_samples(N, n, d):
 
-    G = generate_gaussian_subspace(n, n - d)
-
-    # verify that G is gaussian is we expect
-    # sns.distplot(G[:, 0], color="#53BB04")
-    # plt.show()
-
-    # generate gaussian subspace
+    G = utilities.generate_gaussian_subspace(n, n - d)
     Q, _ = np.linalg.qr(G)  # QR decomposition from Gaussian Matrix size: n X (n-d)
 
     # generate subspace orthogonal to the gaussian (non gaussian) - Matrix size: n X d (REQUESTED E)
-    Q_orthogonal = orthogonal_complement(Q, normalize=True)
+    Q_orthogonal = utilities.orthogonal_complement(Q, normalize=True)
 
     assert_all_columns_unit_vectors(Q_orthogonal)
 
@@ -141,48 +129,11 @@ def generate_synthetic_isotropic_samples(N, n, d):
         sample = np.dot(Q, np.random.randn(n - d, 1)) + np.dot(Q_orthogonal, (np.random.rand(d, 1) - 0.5))  # X = S + N
         samples = np.append(samples, sample, axis=1)
 
-    # whiten_samples = whiten(center(samples))
-
     for _ in range(N):
         sample = np.dot(Q, np.random.randn(n - d, 1)) + np.dot(Q_orthogonal, (np.random.rand(d, 1) - 0.5))  # X = S + N
         samples_copy = np.append(samples_copy, sample, axis=1)
 
-    # whiten_samples_copy = whiten(center(samples_copy))
-    # assert_isotropic_model(whiten_samples)
-    # assert_isotropic_model(whiten_samples_copy)
-
     return samples, samples_copy, Q_orthogonal
-
-
-def orthogonal_complement(x: object, normalize: object = True, threshold: object = 1e-15) -> object:
-    """Compute orthogonal complement of a matrix
-
-    this works along axis zero, i.e. rank == column rank,
-    or number of rows > column rank
-    otherwise orthogonal complement is empty
-
-    TODO possibly: use normalize='top' or 'bottom'
-
-    """
-    x = np.asarray(x)
-    r, c = x.shape
-    if r < c:
-        import warnings
-        warnings.warn('fewer rows than columns', UserWarning)
-
-    # we assume svd is ordered by decreasing singular value, o.w. need sort
-    s, v, d = np.linalg.svd(x)
-    rank = (v > threshold).sum()
-
-    oc = s[:, rank:]
-
-    if normalize:
-        k_oc = oc.shape[1]
-        oc = oc.dot(np.linalg.inv(oc[:k_oc, :]))
-
-    oc, _ = np.linalg.qr(oc)
-
-    return oc
 
 
 def assert_isotropic_model(X):
@@ -204,8 +155,8 @@ def run_ngca_algorithm(samples, samples_copy, alpha1, alpha2, beta1, beta2):
     gaussian_phi_eigenvalue = calculate_gaussian_phi_eigenvalue(alpha1)
     gaussian_psi_eigenvalue = calculate_gaussian_psi_eigenvalue(alpha2)
 
-    print('\ngaussian_phi_eigenvalue: ', gaussian_phi_eigenvalue)
-    print('\ngaussian_psi_eigenvalue: ', gaussian_psi_eigenvalue)
+    # print('\ngaussian_phi_eigenvalue: ', gaussian_phi_eigenvalue)
+    # print('\ngaussian_psi_eigenvalue: ', gaussian_psi_eigenvalue)
 
     # Calculate corresponding eigenvectors for the relevant eigenvalues -
     # those which are far away beta from the gaussian eigenvalues
@@ -214,11 +165,11 @@ def run_ngca_algorithm(samples, samples_copy, alpha1, alpha2, beta1, beta2):
     matrix_psi_relevant_eigenvectors = get_matrix_relevant_eigenvectors(matrix_psi,
                                                                         gaussian_psi_eigenvalue, beta2)
 
-    print('\nmatrix_phi_relevant_eigenvectors')
-    print_matrix(matrix_phi_relevant_eigenvectors)
-
-    print('\nmatrix_psi_relevant_eigenvectors')
-    print_matrix(matrix_psi_relevant_eigenvectors)
+    # print('\nmatrix_phi_relevant_eigenvectors')
+    # print_matrix(matrix_phi_relevant_eigenvectors)
+    #
+    # print('\nmatrix_psi_relevant_eigenvectors')
+    # print_matrix(matrix_psi_relevant_eigenvectors)
 
     # Calculate E space - non gaussian space
     result_space = union_subspace(matrix_phi_relevant_eigenvectors, matrix_psi_relevant_eigenvectors)
@@ -244,7 +195,7 @@ def check_if_epsilon_close_to_vector_in_subspace(vector, subspace):
     while i < subspace.shape[1]:
         col = subspace[:, i][:, np.newaxis]
         dist = LA.norm(vector - col)
-        print('for vector ', vector, ' dist is ', dist)
+        # print('for vector ', vector, ' dist is ', dist)
         i += 1
 
 
@@ -297,9 +248,9 @@ def main():
 
     print('\napproximate_E')
     print_matrix(approximate_E)
-
-    print('\nE')
-    print_matrix(E)
+    #
+    # print('\nE')
+    # print_matrix(E)
 
     validate_approximation(approximate_E, E)
 
