@@ -1,10 +1,8 @@
 import numpy as np
-import pandas as pd
-import math
 from numpy import linalg as LA
-from scipy import linalg
-from scipy import stats
-# from scipy.cluster.vq import whiten
+import math
+# from scipy import linalg
+from scipy.linalg import hadamard
 import seaborn as sns
 
 import pandas as pd
@@ -13,8 +11,16 @@ import matplotlib.pyplot as plt
 from sklearn.feature_selection import SelectFromModel
 
 
+def all_zeros(arr):
+    return np.count_nonzero(arr) == 0
+
+
 def subspace_distance(u1, u2):
     return LA.norm(np.dot(u1, u1.T) - np.dot(u2, u2.T), ord='fro')
+
+
+def subspace_distance_by_angle(v1, v2):
+    return math.acos(LA.norm(abs(np.dot(v1.T, v2)), ord='fro'))
 
 
 def blanchard_subspace_distance(u1, u2):
@@ -25,6 +31,10 @@ def generate_gaussian_subspace(rows, cols):
     mu, sigma = 0, 1  # mean and standard deviation
     # np.random.seed(1234)
     return np.random.normal(mu, sigma, (rows, cols))
+
+
+def get_values_list_in_rage(min, max, num_of_samples):
+    return np.arange(min, max, (max-min)/num_of_samples)
 
 
 def orthogonal_complement(x: object, normalize: object = True, threshold: object = 1e-15) -> object:

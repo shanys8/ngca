@@ -11,6 +11,7 @@ from sklearn.decomposition import PCA as sklearnPCA
 import matplotlib.pyplot as plt
 from sklearn import preprocessing
 import utilities
+import time
 
 
 def plotDataAndCov(data):
@@ -78,9 +79,9 @@ def is_unit_vector(vector):
 
 def generate_derivative_lambdas(num_of_samples_in_range):
 
-    sigma_values = np.sqrt(get_values_list_in_rage(0.5, 5, num_of_samples_in_range))
-    a_values = get_values_list_in_rage(0, 4, num_of_samples_in_range)
-    b_values = get_values_list_in_rage(0, 5, num_of_samples_in_range)
+    sigma_values = np.sqrt(utilities.get_values_list_in_rage(0.5, 5, num_of_samples_in_range))
+    a_values = utilities.get_values_list_in_rage(0, 4, num_of_samples_in_range)
+    b_values = utilities.get_values_list_in_rage(0, 5, num_of_samples_in_range)
 
     gauss_pow3_derivate = lambda sigma: lambda z: 3 * math.pow(z, 2) * math.exp(((-1)*math.pow(z, 2)) / (2*math.pow(sigma, 2))) + math.pow(z, 3) * (-1) * z * (1 / math.pow(sigma, 2)) * math.exp(((-1)*math.pow(z, 2)) / (2*math.pow(sigma, 2)))
     list_of_gauss_pow3_derivative_lambdas = [gauss_pow3_derivate(sigma) for sigma in sigma_values]
@@ -98,9 +99,9 @@ def generate_derivative_lambdas(num_of_samples_in_range):
 
 def generate_lambdas(num_of_samples_in_range):
 
-    sigma_values = np.sqrt(get_values_list_in_rage(0.5, 5, num_of_samples_in_range))
-    a_values = get_values_list_in_rage(0, 4, num_of_samples_in_range)
-    b_values = get_values_list_in_rage(0, 5, num_of_samples_in_range)
+    sigma_values = np.sqrt(utilities.get_values_list_in_rage(0.5, 5, num_of_samples_in_range))
+    a_values = utilities.get_values_list_in_rage(0, 4, num_of_samples_in_range)
+    b_values = utilities.get_values_list_in_rage(0, 5, num_of_samples_in_range)
 
     gauss_pow3 = lambda sigma: lambda z: math.pow(z, 3) * math.exp(((-1)*math.pow(z, 2)) / 2*math.pow(sigma, 2))
     list_of_gauss_pow3_lambdas = [gauss_pow3(sigma) for sigma in sigma_values]
@@ -186,22 +187,27 @@ def run_ngca_algorithm(samples, samples_dimension, T, epsilon, num_of_samples_in
 
     # Iterate on lambdas
     while k < len(lambdas):
-        # print('Running {} out of {}'.format(k, len(lambdas)))
-        lambda_function = lambdas[k]
-        derivative_lambda_function = derivative_lambdas[k]
-        w0 = generate_unit_vector(samples_dimension)
-        w = np.append(w, w0, axis=1)
+        print('Running {} out of {}'.format(k, len(lambdas)))
+        try:
+            lambda_function = lambdas[k]
+            derivative_lambda_function = derivative_lambdas[k]
+            w0 = generate_unit_vector(samples_dimension)
+            w = np.append(w, w0, axis=1)
 
-        # FastICA Loop
-        t = 1
-        while t <= T:
-            # Calculate beta(t)
-            curr_beta = calculate_beta(samples, lambda_function, derivative_lambda_function, w[:, t-1][np.newaxis])
-            w = np.append(w, np.divide(curr_beta, LA.norm(curr_beta)), axis=1)
-            t += 1
-        # Calculate N(k)
-        N = calculate_N(samples, lambda_function, derivative_lambda_function, w[:, T-1], curr_beta)
-        v = np.append(v, (curr_beta * math.sqrt(len(samples) / (N + 1e-10))), axis=1)
+            # FastICA Loop
+            t = 1
+            while t <= T:
+                # Calculate beta(t)
+                curr_beta = calculate_beta(samples, lambda_function, derivative_lambda_function, w[:, t-1][np.newaxis])
+                if utilities.all_zeros(curr_beta):
+                    raise ValueError('beta is all zeros')
+                w = np.append(w, np.divide(curr_beta, LA.norm(curr_beta)), axis=1)
+                t += 1
+            # Calculate N(k)
+            N = calculate_N(samples, lambda_function, derivative_lambda_function, w[:, T-1], curr_beta)
+            v = np.append(v, (curr_beta * math.sqrt(len(samples) / (N + 1e-10))), axis=1)
+        except ValueError as e:
+            print(e)
         k += 1
 
     # Thresholding
@@ -218,8 +224,6 @@ def run_ngca_algorithm(samples, samples_dimension, T, epsilon, num_of_samples_in
     return unwhiten_result
 
 
-def get_values_list_in_rage(min, max, num_of_samples):
-    return np.arange(min, max, (max-min)/num_of_samples)
 
 
 def assert_all_non_negative(items):
@@ -241,12 +245,12 @@ def main():
 
     #  compare errors and run times between two algorithms
     # input
-    n = 5  # dimension (number of features) should be 10
-    d = 2  # subspace dimension - requested dimension of NG data
+    n = 8  # dimension (number of features) should be 10
+    d = 3  # subspace dimension - requested dimension of NG data
     N = 10  # number of samples to generate should be 1000
-    epsilon = 0.4  # should be 1.5
+    epsilon = 0.3  # should be 1.5
     T = 10  # should be 10
-    num_of_samples_in_range = 3  # range divided into num - should be 1000
+    num_of_samples_in_range = 10  # range divided into num - should be 1000
 
     samples, NG_subspace = generate_synthetic_isotropic_samples(N, n, d)
 
@@ -255,14 +259,6 @@ def main():
 
     print('\napproximate_NG_subspace')
     print_matrix(approximate_NG_subspace)
-
-    # print('\nNG_subspace')
-    # print_matrix(NG_subspace)
-
-    # print('\nDistance between sub spaces')
-    # print(LA.norm(np.dot(approximate_NG_subspace, approximate_NG_subspace.T) - np.dot(NG_subspace.T, NG_subspace),
-    #               ord='fro'))
-    # print(utilities.blanchard_subspace_distance(approximate_NG_subspace, NG_subspace))
 
     return approximate_NG_subspace
 

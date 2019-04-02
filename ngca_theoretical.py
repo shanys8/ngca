@@ -11,6 +11,7 @@ import pandas as pd
 from sklearn.ensemble import RandomForestRegressor
 import matplotlib.pyplot as plt
 from sklearn.feature_selection import SelectFromModel
+import time
 
 import utilities
 
@@ -35,7 +36,7 @@ def compute_matrix_phi(samples, samples_copy, alpha):
 
 
 def compute_z_phi(samples, alpha):
-    return np.array([(math.exp((-1) * alpha * math.pow(LA.norm(sample), 2))) for sample in samples]).sum()
+    return np.array([(math.exp((-1) * alpha * math.pow(LA.norm(sample), 2))) for sample in samples.T]).sum()
 
 
 def compute_matrix_psi(samples, samples_copy, alpha):
@@ -73,11 +74,14 @@ def calculate_gaussian_psi_eigenvalue(alpha):
 
 
 def get_matrix_relevant_eigenvectors(matrix, gaussian_eigenvalue, threshold):
-    eigenvalues, eigenvectors = LA.eig(matrix)
+    min_eigenvalue_to_count = 1e-5
+    eigenvalues, eigenvectors = LA.eigh(matrix)
+    if eigenvectors.dtype.name != 'float64':
+        raise ValueError('eigenvalues are not all floats')
     relevant_eigenvectors = np.empty((eigenvectors.shape[0], 0), float)
     i = 0
     while i < len(eigenvalues):
-        if math.fabs(eigenvalues[i] - gaussian_eigenvalue) > threshold:
+        if eigenvalues[i] > min_eigenvalue_to_count and math.fabs(eigenvalues[i] - gaussian_eigenvalue) > threshold:
             relevant_eigenvectors = np.append(relevant_eigenvectors, eigenvectors[:, i][:, np.newaxis], axis=1)
         i += 1
 
