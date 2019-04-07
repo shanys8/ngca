@@ -16,11 +16,14 @@ display('Size of X:');
 size(X)                         % check the size of X (1000
                                 % points in 13 dimensions)
 
+tic
 [ngspace,projdata,signalspace] = NGCA(X,[]);  % apply NGCA with
                                               % defaults parameters
 					      % (in particular,
                                               % searches for 2
                                               % non-Gaussian dimensions)
+timeElapsed = toc;
+display(timeElapsed)
 
 subplot(1,2,2);
 						 

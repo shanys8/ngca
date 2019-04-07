@@ -2,6 +2,7 @@ import numpy as np
 from matplotlib import pyplot as plt
 import ngca_theoretical
 import random
+import time
 
 
 # separate data into samples and samples_copy
@@ -36,11 +37,16 @@ def main():
     samples, samples_copy = download_oil_data()
 
     # Run algorithm
+    start = time.time()
+
     approx_NG_subspace = ngca_theoretical.run_ngca_algorithm(samples,
                                                                   samples_copy,
                                                                   params['alpha1'],
                                                                   params['alpha2'], params['beta1'],
                                                                   params['beta2'])
+    end = time.time()
+    print('runtime')
+    print(end - start)
 
     # Project data on result subspace
     proj_data = np.concatenate((np.dot(approx_NG_subspace.T, samples), np.dot(approx_NG_subspace.T, samples_copy)),
