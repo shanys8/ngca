@@ -29,23 +29,26 @@ def print_matrix(matrix):
 
 
 def compute_matrix_phi(samples, samples_copy, alpha):
-    return (1 / compute_z_phi(samples, alpha)) * \
-           (np.array([(math.exp((-1) * alpha * math.pow(LA.norm(sample), 2)) *
-                       np.dot(sample[:, np.newaxis], sample[np.newaxis, :]))
-                      for sample in samples.T]).sum(axis=0))
+    result = 0
+    z_phi_coeficient = (1 / compute_z_phi(samples, alpha))
+    for sample in samples:
+        result += math.exp((-1) * alpha * math.pow(LA.norm(sample), 2)) * \
+                  np.dot(sample[:, np.newaxis], sample[np.newaxis, :])
+
+    return z_phi_coeficient * result
 
 
 def compute_z_phi(samples, alpha):
-    return np.array([(math.exp((-1) * alpha * math.pow(LA.norm(sample), 2))) for sample in samples.T]).sum()
+    return np.array([(math.exp((-1) * alpha * math.pow(LA.norm(sample), 2))) for sample in samples]).sum()
 
 
 def compute_matrix_psi(samples, samples_copy, alpha):
     return_val = 0
     i = 0
-    while i < len(samples.T):
-        return_val += math.exp((-1) * alpha * np.dot(samples.T[i], samples_copy.T[i])) * \
-                      (np.dot(samples.T[i][:, np.newaxis], samples_copy.T[i][np.newaxis, :]) +
-                       np.dot(samples_copy.T[i][:, np.newaxis], samples.T[i][np.newaxis, :]))
+    while i < samples.shape[0]:
+        return_val += math.exp((-1) * alpha * np.dot(samples[i][np.newaxis, :], samples_copy[i][:, np.newaxis])) * \
+                      ((np.dot(samples[i][:, np.newaxis], samples_copy[i][np.newaxis, :])) +
+                       (np.dot(samples_copy[i][:, np.newaxis], samples[i][np.newaxis, :])))
         i += 1
 
     return (1 / compute_z_psi(samples, samples_copy, alpha)) * return_val
@@ -54,8 +57,8 @@ def compute_matrix_psi(samples, samples_copy, alpha):
 def compute_z_psi(samples, samples_copy, alpha):
     return_val = 0
     i = 0
-    while i < len(samples.T):
-        return_val += math.exp((-1) * alpha * np.dot(samples.T[i], samples_copy.T[i]))
+    while i < samples.shape[0]:
+        return_val += math.exp((-1) * alpha * np.dot(samples[i][np.newaxis, :], samples_copy[i][:, np.newaxis]))
         i += 1
 
     return 2 * return_val
@@ -97,20 +100,17 @@ def polynom(degree_r, n_param, epsilon_param, delta_param, D_param, K_param):
 
 
 def center(X):
-    newX = X - np.mean(X, axis=0)
-    return newX
+    c = np.mean(X, axis = 0)
+    Xw = X - c
+    return Xw, c
 
 
 def whiten(X):
-    # newX = center(X)
-    cov = X.T.dot(X) / float(X.shape[0])
-    # Calculate the eigenvalues and eigenvectors of the covariance matrix
-    eigVals, eigVecs = np.linalg.eig(cov)
-    # Apply the eigenvectors to X
-    decorrelated = X.dot(eigVecs)
-    # Rescale the decorrelated data
-    whitened = decorrelated / np.sqrt(eigVals + 1e-5)
-    return whitened
+    X_c, c = center(X)
+    U, s, VT = np.linalg.svd(X_c, full_matrices=False)
+    W = VT.T * (math.sqrt(X.shape[0]) / s)
+    X_w = U * math.sqrt(X.shape[0])
+    return X_w, c, W
 
 
 def generate_synthetic_isotropic_samples(N, n, d):
@@ -150,6 +150,12 @@ def assert_isotropic_model(X):
 
 
 def run_ngca_algorithm(samples, samples_copy, alpha1, alpha2, beta1, beta2):
+    samples, c_samples, W_samples = whiten(samples)
+    samples_copy, c_samples_copy, W_samples_copy = whiten(samples_copy)
+
+    assert_isotropic_model(samples)
+    assert_isotropic_model(samples_copy)
+
     # Calculate matrices
     matrix_phi = compute_matrix_phi(samples, samples_copy, alpha1)
 
@@ -159,16 +165,12 @@ def run_ngca_algorithm(samples, samples_copy, alpha1, alpha2, beta1, beta2):
     gaussian_phi_eigenvalue = calculate_gaussian_phi_eigenvalue(alpha1)
     gaussian_psi_eigenvalue = calculate_gaussian_psi_eigenvalue(alpha2)
 
-    # print('\ngaussian_phi_eigenvalue: ', gaussian_phi_eigenvalue)
-    # print('\ngaussian_psi_eigenvalue: ', gaussian_psi_eigenvalue)
-
     # Calculate corresponding eigenvectors for the relevant eigenvalues -
     # those which are far away beta from the gaussian eigenvalues
     matrix_phi_relevant_eigenvectors = get_matrix_relevant_eigenvectors(matrix_phi,
                                                                         gaussian_phi_eigenvalue, beta1)
     matrix_psi_relevant_eigenvectors = get_matrix_relevant_eigenvectors(matrix_psi,
                                                                         gaussian_psi_eigenvalue, beta2)
-
     # print('\nmatrix_phi_relevant_eigenvectors')
     # print_matrix(matrix_phi_relevant_eigenvectors)
     #
