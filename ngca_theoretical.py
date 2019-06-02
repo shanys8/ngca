@@ -1,31 +1,7 @@
 import numpy as np
-import pandas as pd
 import math
 from numpy import linalg as LA
-from scipy import linalg
-from scipy import stats
-# from scipy.cluster.vq import whiten
-import seaborn as sns
-
-import pandas as pd
-from sklearn.ensemble import RandomForestRegressor
-import matplotlib.pyplot as plt
-from sklearn.feature_selection import SelectFromModel
-import time
-
 import utilities
-
-def plotDataAndCov(data):
-    ACov = np.cov(data, rowvar=False, bias=True)
-    print('\nCovariance matrix:\n', ACov)
-
-
-def print_matrix(matrix):
-    s = [[str(e) for e in row] for row in matrix]
-    lens = [max(map(len, col)) for col in zip(*s)]
-    fmt = '\t'.join('{{:{}}}'.format(x) for x in lens)
-    table = [fmt.format(*row) for row in s]
-    print('\n'.join(table))
 
 
 def compute_matrix_phi(samples, samples_copy, alpha):
@@ -144,7 +120,6 @@ def assert_isotropic_model(X):
     assert (np.allclose(np.mean(X, axis=0), np.zeros(X.shape[1]), rtol=1.e-2,
                         atol=1.e-2))  # each column vector should have mean zero
     cov_X = np.cov(X, rowvar=False, bias=True)
-    # print_matrix(cov_X)
     assert (cov_X.shape[0] == cov_X.shape[1]) and np.allclose(cov_X, np.eye(cov_X.shape[0]), rtol=1.e-1,
                                                               atol=1.e-1)  # covariance matrix should by identity
 
@@ -171,11 +146,6 @@ def run_ngca_algorithm(samples, samples_copy, alpha1, alpha2, beta1, beta2):
                                                                         gaussian_phi_eigenvalue, beta1)
     matrix_psi_relevant_eigenvectors = get_matrix_relevant_eigenvectors(matrix_psi,
                                                                         gaussian_psi_eigenvalue, beta2)
-    # print('\nmatrix_phi_relevant_eigenvectors')
-    # print_matrix(matrix_phi_relevant_eigenvectors)
-    #
-    # print('\nmatrix_psi_relevant_eigenvectors')
-    # print_matrix(matrix_psi_relevant_eigenvectors)
 
     # Calculate E space - non gaussian space
     result_space = union_subspace(matrix_phi_relevant_eigenvectors, matrix_psi_relevant_eigenvectors)
@@ -194,38 +164,6 @@ def assert_all_columns_unit_vectors(matrix):
 
 def is_unit_vector(vector):
     return math.isclose(LA.norm(vector),  1.0, rel_tol=1e-2)
-
-
-def check_if_epsilon_close_to_vector_in_subspace(vector, subspace):
-    i = 0
-    while i < subspace.shape[1]:
-        col = subspace[:, i][:, np.newaxis]
-        dist = LA.norm(vector - col)
-        # print('for vector ', vector, ' dist is ', dist)
-        i += 1
-
-
-def validate_approximation(approx_subspace, subspace):
-    print('distance between approx and real subspace ')
-
-    print(utilities.subspace_distance(approx_subspace, subspace))
-
-    # i = 0
-    # while i < approx_subspace.shape[1]:
-    #     col = approx_subspace[:, i][:, np.newaxis]
-    #     check_if_epsilon_close_to_vector_in_subspace(col, subspace)
-    #     i += 1
-    # i = 0
-    # random_spanned_vector = np.zeros((approximate_E.shape[0], 1), float)
-    # while i < approximate_E.shape[1]:
-    #     random_spanned_vector += np.random.random_sample() * approximate_E[:, i][:, np.newaxis]
-    #     i += 1
-
-    # linear_combination_of_Q_orthogonal_columns = np.linalg.lstsq(E, random_spanned_vector)
-
-    # if linear_combination_of_Q_orthogonal_columns exist then we can find for each vector spanned by approximate_E
-    # a linear combination of columns of E so it is also belongs to E (need to check if it is epsilon close to vector in E)
-    # print(linear_combination_of_Q_orthogonal_columns)
 
 
 def main():
@@ -251,14 +189,6 @@ def main():
 
     # Implementation of algorithm in the paper
     approximate_E = run_ngca_algorithm(samples, samples_copy, alpha1, alpha2, beta1, beta2)
-
-    print('\napproximate_E')
-    print_matrix(approximate_E)
-    #
-    # print('\nE')
-    # print_matrix(E)
-
-    validate_approximation(approximate_E, E)
 
     return approximate_E
 

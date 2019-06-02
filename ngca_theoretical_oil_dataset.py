@@ -1,14 +1,29 @@
 import numpy as np
+import matplotlib
 from matplotlib import pyplot as plt
 import ngca_theoretical
 import random
 import time
+import utilities
 
 
 # separate data into samples and samples_copy
 def download_oil_data():
-    result = np.loadtxt(fname="matlab_code/DataTst.txt")
+    result = np.loadtxt(fname="datasets/DataTst.txt")
     return result[:500], result[500:]
+
+
+def download_labels():
+    int_labels = []
+    labels = np.loadtxt(fname="datasets/DataTstLbls.txt")
+    for label in labels:
+        if np.array_equal(label.astype(int), [1, 0, 0]):
+            int_labels = np.append(int_labels, 0)
+        if np.array_equal(label.astype(int), [0, 1, 0]):
+            int_labels = np.append(int_labels, 1)
+        if np.array_equal(label.astype(int), [0, 0, 1]):
+            int_labels = np.append(int_labels, 2)
+    return int_labels.astype(int)
 
 
 def tuning():
@@ -36,6 +51,10 @@ def main():
     # Get data
     samples, samples_copy = download_oil_data()
 
+    # Get labels
+    labels = download_labels()
+    colors = ['red', 'green', 'blue']
+
     # Run algorithm
     start = time.time()
 
@@ -53,11 +72,12 @@ def main():
                                axis=0)
 
     # plot first two dimensions
-    plt.scatter(proj_data[:, 0], proj_data[:, 1], c='r')
+    plt.scatter(proj_data[:, 0], proj_data[:, 1], c=labels, cmap=matplotlib.colors.ListedColormap(colors))
+
     plt.title(params_to_title(params))
     # plt.legend()
     # plt.show()
-    plt.savefig('matlab_code/oil_data_results/{}.png'.format(params))
+    plt.savefig('results/{}.png'.format(params))
 
 
 if __name__ == "__main__":
