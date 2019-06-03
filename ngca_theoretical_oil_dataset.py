@@ -8,14 +8,14 @@ import utilities
 
 
 # separate data into samples and samples_copy
-def download_oil_data():
-    result = np.loadtxt(fname="datasets/DataTst.txt")
+def download_oil_data(file_name):
+    result = np.loadtxt(fname="datasets/{}.txt".format(file_name))
     return result[:500], result[500:]
 
 
-def download_labels():
+def download_labels(file_name):
     int_labels = []
-    labels = np.loadtxt(fname="datasets/DataTstLbls.txt")
+    labels = np.loadtxt(fname="datasets/{}Lbls.txt".format(file_name))
     for label in labels:
         if np.array_equal(label.astype(int), [1, 0, 0]):
             int_labels = np.append(int_labels, 0)
@@ -45,14 +45,13 @@ def main():
     params = {'alpha1': 0.6754445940381727, 'alpha2': 0.29744739800298886, 'beta1': 0.3403472323546272,
               'beta2': 0.6441926407645018}
 
-    # # try several params values
-    # params = tuning()
+    data_file_name = 'DataVdn'
 
     # Get data
-    samples, samples_copy = download_oil_data()
+    samples, samples_copy = download_oil_data(data_file_name)
 
     # Get labels
-    labels = download_labels()
+    labels = download_labels(data_file_name)
     colors = ['red', 'green', 'blue']
 
     # Run algorithm
@@ -74,10 +73,10 @@ def main():
     # plot first two dimensions
     plt.scatter(proj_data[:, 0], proj_data[:, 1], c=labels, cmap=matplotlib.colors.ListedColormap(colors))
 
-    plt.title(params_to_title(params))
+    plt.title(data_file_name)
     # plt.legend()
     # plt.show()
-    plt.savefig('results/{}.png'.format(params))
+    plt.savefig('results/{}.png'.format(data_file_name))
 
 
 if __name__ == "__main__":
