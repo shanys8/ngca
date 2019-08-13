@@ -5,8 +5,8 @@ from numpy import linalg as LA
 
 def compute_matrix_phi(samples, samples_copy, alpha):
     result = 0
-    z_phi_coeficient = (1 / compute_z_phi(samples, alpha))
-    for sample in samples:
+    z_phi_coeficient = (1 / compute_z_phi(samples.T, alpha))
+    for sample in samples.T:
         result += math.exp((-1) * alpha * math.pow(LA.norm(sample), 2)) * \
                   np.dot(sample[:, np.newaxis], sample[np.newaxis, :])
 
@@ -20,10 +20,14 @@ def compute_z_phi(samples, alpha):
 def compute_matrix_psi(samples, samples_copy, alpha):
     return_val = 0
     i = 0
-    while i < samples.shape[0]:
-        return_val += math.exp((-1) * alpha * np.dot(samples[i][np.newaxis, :], samples_copy[i][:, np.newaxis])) * \
-                      ((np.dot(samples[i][:, np.newaxis], samples_copy[i][np.newaxis, :])) +
-                       (np.dot(samples_copy[i][:, np.newaxis], samples[i][np.newaxis, :])))
+
+    samples_T = samples.T
+    samples_copy_T = samples_copy.T
+
+    while i < samples_T.shape[0]:
+        return_val += math.exp((-1) * alpha * np.dot(samples_T[i][np.newaxis, :], samples_copy_T[i][:, np.newaxis])) * \
+                      ((np.dot(samples_T[i][:, np.newaxis], samples_copy_T[i][np.newaxis, :])) +
+                       (np.dot(samples_copy_T[i][:, np.newaxis], samples_T[i][np.newaxis, :])))
         i += 1
 
     return (1 / compute_z_psi(samples, samples_copy, alpha)) * return_val
@@ -32,8 +36,10 @@ def compute_matrix_psi(samples, samples_copy, alpha):
 def compute_z_psi(samples, samples_copy, alpha):
     return_val = 0
     i = 0
-    while i < samples.shape[0]:
-        return_val += math.exp((-1) * alpha * np.dot(samples[i][np.newaxis, :], samples_copy[i][:, np.newaxis]))
+    samples_T = samples.T
+    samples_copy_T = samples_copy.T
+    while i < samples_T.shape[0]:
+        return_val += math.exp((-1) * alpha * np.dot(samples_T[i][np.newaxis, :], samples_copy_T[i][:, np.newaxis]))
         i += 1
 
     return 2 * return_val

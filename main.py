@@ -37,18 +37,19 @@ def generate_synthetic_samples(number_of_samples, n, k, m, type_of_requested_sub
 
     return samples, samples_copy, Q_E
 
+
 def main():
 
     m = 5
-    n = 10  # dimension
+    n = 10  # dimension - number of features
     k = 3  # NG subspace dimension
-    number_of_samples = 10
-    type_of_requested_subspace = 'gaussian'  # uniform, gaussian, super_gaussian
+    number_of_samples = 8  # number of samples
+    type_of_requested_subspace = 'gaussian'  # uniform | gaussian | super_gaussian
 
-    alpha1 = 1
-    alpha2 = 1
-    beta1 = 1
-    beta2 = 1
+    alpha1 = 0.6754445940381727
+    alpha2 = 0.29744739800298886
+    beta1 = 0.3403472323546272
+    beta2 = 0.6441926407645018
 
     samples, samples_copy, Q_E = generate_synthetic_samples(number_of_samples, n, k, m, type_of_requested_subspace)
 
