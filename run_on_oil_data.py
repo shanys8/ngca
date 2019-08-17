@@ -1,10 +1,8 @@
 import numpy as np
 import matplotlib
 from matplotlib import pyplot as plt
-import ngca_theoretical
-import random
 import time
-import utilities
+from ngca_algorithm import run as run_ngca_algorithm
 
 
 # separate data into samples and samples_copy
@@ -26,48 +24,28 @@ def download_labels(file_name):
     return int_labels.astype(int)
 
 
-def tuning():
-    return {
-        'alpha1': random.uniform(1e-10, 10),
-        'alpha2': random.uniform(1e-10, 10),
-        'beta1': random.uniform(1e-10, 1),
-        'beta2': random.uniform(1e-10, 1)
-    }
-
-
-def params_to_title(params):
-    return 'alpha1: {} alpha2: {} \n beta1: {} beta2: {}'.format(params['alpha1'], params['alpha2'], params['beta1'], params['beta2'])
-
-
 def main():
 
-    # Theoretical NGCA optimal params
-    params = {'alpha1': 0.6754445940381727, 'alpha2': 0.29744739800298886, 'beta1': 0.3403472323546272,
-              'beta2': 0.6441926407645018}
+    alpha1 = 0.7
+    alpha2 = 0.3
+    beta1 = 0.34
+    beta2 = 0.64
 
-    data_file_name = 'DataVdn'
-
-    # Get data
+    data_file_name = 'DataTrn'
     samples, samples_copy = download_oil_data(data_file_name)
-
-    # Get labels
     labels = download_labels(data_file_name)
     colors = ['red', 'green', 'blue']
 
     # Run algorithm
     start = time.time()
 
-    approx_NG_subspace = ngca_theoretical.run_ngca_algorithm(samples,
-                                                                  samples_copy,
-                                                                  params['alpha1'],
-                                                                  params['alpha2'], params['beta1'],
-                                                                  params['beta2'])
+    approx_ng_subspace = run_ngca_algorithm(samples, samples_copy, alpha1, alpha2, beta1, beta2)
     end = time.time()
     print('runtime')
     print(end - start)
 
     # Project data on result subspace
-    proj_data = np.concatenate((np.dot(samples, approx_NG_subspace), np.dot(samples_copy, approx_NG_subspace)),
+    proj_data = np.concatenate((np.dot(samples, approx_ng_subspace), np.dot(samples_copy, approx_ng_subspace)),
                                axis=0)
 
     # plot first two dimensions
@@ -76,7 +54,7 @@ def main():
     plt.title(data_file_name)
     # plt.legend()
     # plt.show()
-    plt.savefig('results/{}.png'.format(data_file_name))
+    plt.savefig('results/{}_alpha1={}|alpha2={}|beta1={}|beta1={}.png'.format(data_file_name, alpha1, alpha2, beta1, beta2))
 
 
 if __name__ == "__main__":

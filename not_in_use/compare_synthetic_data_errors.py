@@ -2,10 +2,7 @@ import numpy as np
 from numpy import linalg as LA
 from matplotlib import pyplot as plt
 import utilities
-import ngca_blanchard
-import ngca_theoretical
-import random
-import time
+from not_in_use import ngca_old, ngca_blanchard
 import math
 
 # N num of samples
@@ -71,11 +68,11 @@ def main():
             # Theoretical NGCA algorithm
             params = {'alpha1': 0.6754445940381727, 'alpha2': 0.29744739800298886, 'beta1': 0.3403472323546272,
                       'beta2': 0.6441926407645018}
-            approximate_theoretical_NG_subspace = ngca_theoretical.run_ngca_algorithm(theoretical_samples,
-                                                                                      theoretical_samples_copy,
-                                                                                      params['alpha1'],
-                                                                                      params['alpha2'], params['beta1'],
-                                                                                      params['beta2'])
+            approximate_theoretical_NG_subspace = ngca_old.run_ngca_algorithm(theoretical_samples,
+                                                                              theoretical_samples_copy,
+                                                                              params['alpha1'],
+                                                                              params['alpha2'], params['beta1'],
+                                                                              params['beta2'])
 
             theoretical_algorithm_error = utilities.subspace_distance(approximate_theoretical_NG_subspace, NG_subspace)
             theoretical_errors = np.append(theoretical_errors, theoretical_algorithm_error)

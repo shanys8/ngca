@@ -3,10 +3,13 @@ import math
 from numpy import linalg as LA
 
 
+# Features as columns
+# Samples as rows
+
 def compute_matrix_phi(samples, samples_copy, alpha):
     result = 0
-    z_phi_coeficient = (1 / compute_z_phi(samples.T, alpha))
-    for sample in samples.T:
+    z_phi_coeficient = (1 / compute_z_phi(samples, alpha))
+    for sample in samples:
         result += math.exp((-1) * alpha * math.pow(LA.norm(sample), 2)) * \
                   np.dot(sample[:, np.newaxis], sample[np.newaxis, :])
 
@@ -20,14 +23,10 @@ def compute_z_phi(samples, alpha):
 def compute_matrix_psi(samples, samples_copy, alpha):
     return_val = 0
     i = 0
-
-    samples_T = samples.T
-    samples_copy_T = samples_copy.T
-
-    while i < samples_T.shape[0]:
-        return_val += math.exp((-1) * alpha * np.dot(samples_T[i][np.newaxis, :], samples_copy_T[i][:, np.newaxis])) * \
-                      ((np.dot(samples_T[i][:, np.newaxis], samples_copy_T[i][np.newaxis, :])) +
-                       (np.dot(samples_copy_T[i][:, np.newaxis], samples_T[i][np.newaxis, :])))
+    while i < samples.shape[0]:
+        return_val += math.exp((-1) * alpha * np.dot(samples[i][np.newaxis, :], samples_copy[i][:, np.newaxis])) * \
+                      ((np.dot(samples[i][:, np.newaxis], samples_copy[i][np.newaxis, :])) +
+                       (np.dot(samples_copy[i][:, np.newaxis], samples[i][np.newaxis, :])))
         i += 1
 
     return (1 / compute_z_psi(samples, samples_copy, alpha)) * return_val
@@ -36,10 +35,8 @@ def compute_matrix_psi(samples, samples_copy, alpha):
 def compute_z_psi(samples, samples_copy, alpha):
     return_val = 0
     i = 0
-    samples_T = samples.T
-    samples_copy_T = samples_copy.T
-    while i < samples_T.shape[0]:
-        return_val += math.exp((-1) * alpha * np.dot(samples_T[i][np.newaxis, :], samples_copy_T[i][:, np.newaxis]))
+    while i < samples.shape[0]:
+        return_val += math.exp((-1) * alpha * np.dot(samples[i][np.newaxis, :], samples_copy[i][:, np.newaxis]))
         i += 1
 
     return 2 * return_val
@@ -77,7 +74,7 @@ def union_subspace(e1, e2):
 
 
 def center(X):
-    c = np.mean(X, axis = 0)
+    c = np.mean(X, axis=0)
     Xw = X - c
     return Xw, c
 
@@ -91,8 +88,8 @@ def whiten(X):
 
 
 def assert_isotropic_model(X):
-    assert (np.allclose(np.mean(X, axis=0), np.zeros(X.shape[1]), rtol=1.e-2,
-                        atol=1.e-2))  # each column vector should have mean zero
+    assert (np.allclose(np.mean(X, axis=0), np.zeros(X.shape[1]), rtol=1.e-1,
+                        atol=1.e-1))  # each column vector should have mean zero
     cov_X = np.cov(X, rowvar=False, bias=True)
     assert (cov_X.shape[0] == cov_X.shape[1]) and np.allclose(cov_X, np.eye(cov_X.shape[0]), rtol=1.e-1,
                                                               atol=1.e-1)  # covariance matrix should by identity
@@ -112,16 +109,16 @@ def is_unit_vector(vector):
 def run_ngca_algorithm(samples, samples_copy, alpha1, alpha2, beta1, beta2):
 
     # Whiten samples
-    samples, c_samples, W_samples = whiten(samples)
-    samples_copy, c_samples_copy, W_samples_copy = whiten(samples_copy)
+    whiten_samples, c_samples, _ = whiten(samples)
+    whiten_samples_copy, c_samples_copy, _ = whiten(samples_copy)
 
-    assert_isotropic_model(samples)
-    assert_isotropic_model(samples_copy)
+    assert_isotropic_model(whiten_samples)
+    assert_isotropic_model(whiten_samples_copy)
 
     # Calculate matrices
-    matrix_phi = compute_matrix_phi(samples, samples_copy, alpha1)
+    matrix_phi = compute_matrix_phi(whiten_samples, whiten_samples_copy, alpha1)
 
-    matrix_psi = compute_matrix_psi(samples, samples_copy, alpha2)
+    matrix_psi = compute_matrix_psi(whiten_samples, whiten_samples_copy, alpha2)
 
     # Calculate the gaussian eigenvalue for each matrix
     gaussian_phi_eigenvalue = calculate_gaussian_phi_eigenvalue(alpha1)
