@@ -3,6 +3,7 @@ import matplotlib
 from matplotlib import pyplot as plt
 import time
 from ngca_algorithm import run as run_ngca_algorithm
+from sklearn.cluster import KMeans
 
 
 # separate data into samples and samples_copy
@@ -24,6 +25,12 @@ def download_labels(file_name):
     return int_labels.astype(int)
 
 
+def calculate_centers_by_labels(X, labels):
+    res = np.concatenate((X[labels == 0, :].mean(axis=0)[np.newaxis], X[labels == 1, :].mean(axis=0)[np.newaxis]), axis=0)
+    res = np.concatenate((res, X[labels == 2, :].mean(axis=0)[np.newaxis]), axis=0)
+    return res
+
+
 def main():
 
     alpha1 = 0.7
@@ -31,31 +38,55 @@ def main():
     beta1 = 0.34
     beta2 = 0.64
 
-    data_file_name = 'DataTrn'
-    samples, samples_copy = download_oil_data(data_file_name)
-    labels = download_labels(data_file_name)
     colors = ['red', 'green', 'blue']
 
-    # Run algorithm
+    # get samples from train data
+    train_data_file_name = 'DataTrn'
+    train_samples, train_samples_copy = download_oil_data(train_data_file_name)
+
+    # Run algorithm on samples from train data
     start = time.time()
-
-    approx_ng_subspace = run_ngca_algorithm(samples, samples_copy, alpha1, alpha2, beta1, beta2)
+    approx_ng_subspace = run_ngca_algorithm(train_samples, train_samples_copy, alpha1, alpha2, beta1, beta2)
     end = time.time()
-    print('runtime')
-    print(end - start)
+    duration = end - start
 
-    # Project data on result subspace
-    proj_data = np.concatenate((np.dot(samples, approx_ng_subspace), np.dot(samples_copy, approx_ng_subspace)),
-                               axis=0)
+    # get samples and labels from validation data
+    validation_data_file_name = 'DataVdn'
+    validation_samples, validation_samples_copy = download_oil_data(validation_data_file_name)
+    validation_labels = download_labels(validation_data_file_name)
 
-    # plot first two dimensions
-    plt.scatter(proj_data[:, 0], proj_data[:, 1], c=labels, cmap=matplotlib.colors.ListedColormap(colors))
+    # Project validation data on the result subspace
+    proj_data = np.concatenate((np.dot(validation_samples, approx_ng_subspace),
+                                np.dot(validation_samples_copy, approx_ng_subspace)), axis=0)
 
-    plt.title(data_file_name)
+    # 2d plot
+    data_for_clusters = proj_data[:, 0:2]
+    kmeans = KMeans(n_clusters=3, random_state=0).fit(data_for_clusters) # Get 3 clusters center
+    centers_by_labels = calculate_centers_by_labels(data_for_clusters, validation_labels)
+
+    # plot first two dimensions of data
+    plt.scatter(proj_data[:, 0], proj_data[:, 1], c=validation_labels, cmap=matplotlib.colors.ListedColormap(colors))
+    # plot centers of labels
+    plt.scatter(centers_by_labels[:, 0], centers_by_labels[:, 1], c='yellow')
+    # plot centers of 3 clusters by kmeans result
+    plt.scatter(kmeans.cluster_centers_[:, 0], kmeans.cluster_centers_[:, 1], c='orange')
     # plt.legend()
     # plt.show()
-    plt.savefig('results/{}_alpha1={}|alpha2={}|beta1={}|beta1={}.png'.format(data_file_name, alpha1, alpha2, beta1, beta2))
+    plt.savefig('2d_results/alpha1={}|alpha2={}|beta1={}|beta1={}.png'.format(alpha1, alpha2, beta1, beta2))
 
+    # 3d plot
+    data_for_clusters = proj_data[:, 0:2]
+    kmeans = KMeans(n_clusters=3, random_state=0).fit(data_for_clusters) # Get 3 clusters center
+    centers_by_labels = calculate_centers_by_labels(data_for_clusters, validation_labels)
+
+    # plot first three dimensions of data
+    plt.scatter(proj_data[:, 0], proj_data[:, 1], c=validation_labels, cmap=matplotlib.colors.ListedColormap(colors))
+    # plot centers of labels
+    plt.scatter(centers_by_labels[:, 0], centers_by_labels[:, 1], c='yellow')
+    # plot centers of 3 clusters by kmeans result
+    plt.scatter(kmeans.cluster_centers_[:, 0], kmeans.cluster_centers_[:, 1], c='orange')
+
+    plt.savefig('3d_results/alpha1={}|alpha2={}|beta1={}|beta1={}.png'.format(alpha1, alpha2, beta1, beta2))
 
 if __name__ == "__main__":
     main()
