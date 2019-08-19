@@ -139,8 +139,9 @@ def run_ngca_algorithm(samples, samples_copy, alpha1, alpha2, beta1, beta2):
     return result_space
 
 
-def run(samples, samples_copy, alpha1, alpha2, beta1, beta2):
+def run(samples, samples_copy, params):
     # Implementation of algorithm in the paper
-    approx_ng_subspace = run_ngca_algorithm(samples, samples_copy, alpha1, alpha2, beta1, beta2)
+    approx_ng_subspace = run_ngca_algorithm(samples, samples_copy,
+                                            params['alpha1'], params['alpha2'], params['beta1'], params['beta2'])
     return approx_ng_subspace
 

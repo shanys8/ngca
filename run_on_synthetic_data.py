@@ -53,17 +53,19 @@ def main():
     number_of_samples = 1000  # number of samples
     type_of_requested_subspace = 'gaussian'  # sub_gaussian | gaussian | super_gaussian
 
-    alpha1 = 0.7
-    alpha2 = 0.3
-    beta1 = 0.34
-    beta2 = 0.64
+    algorithm_params = {
+        'alpha1': 0.7,
+        'alpha2': 0.3,
+        'beta1': 0.34,
+        'beta2': 0.64,
+    }
 
     samples, samples_copy, Q_E = generate_synthetic_samples(number_of_samples, n, k, m, type_of_requested_subspace)
 
     # E is the range of Q_E
 
     # Implementation of algorithm in the paper
-    approx_ng_subspace = run_ngca_algorithm(samples.T, samples_copy.T, alpha1, alpha2, beta1, beta2)
+    approx_ng_subspace = run_ngca_algorithm(samples.T, samples_copy.T, algorithm_params)
 
     # TODO compare Q_E and approx_ng_subspace
 
