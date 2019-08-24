@@ -4,11 +4,54 @@ import math
 # from scipy import linalg
 from scipy.linalg import hadamard
 import seaborn as sns
-
 import pandas as pd
 from sklearn.ensemble import RandomForestRegressor
 import matplotlib.pyplot as plt
 from sklearn.feature_selection import SelectFromModel
+from sklearn.cluster import KMeans
+from mpl_toolkits.mplot3d import Axes3D
+from sklearn.metrics.cluster import adjusted_rand_score
+
+
+def download_data(file_name, separate_data=False):
+    result = np.loadtxt(fname="datasets/{}.txt".format(file_name))
+    return (result[:500], result[500:]) if separate_data else result
+
+
+def download_labels(file_name):
+    int_labels = []
+    labels = np.loadtxt(fname="datasets/{}Lbls.txt".format(file_name))
+    for label in labels:
+        if np.array_equal(label.astype(int), [1, 0, 0]):
+            int_labels = np.append(int_labels, 0)
+        if np.array_equal(label.astype(int), [0, 1, 0]):
+            int_labels = np.append(int_labels, 1)
+        if np.array_equal(label.astype(int), [0, 0, 1]):
+            int_labels = np.append(int_labels, 2)
+    return int_labels.astype(int)
+
+
+def get_result_score(proj_data, labels_true):
+    kmeans = KMeans(n_clusters=3, random_state=0).fit(proj_data)
+    labels_pred = kmeans.labels_
+    score = adjusted_rand_score(labels_true, labels_pred)
+    # 0.0 for random labeling and samples and exactly 1.0 when the clusterings are identical
+    return 1 - score  # for the purpose of minimization of the score
+
+
+def calculate_centers_by_labels(X, labels):
+    res = np.concatenate((X[labels == 0, :].mean(axis=0)[np.newaxis], X[labels == 1, :].mean(axis=0)[np.newaxis]), axis=0)
+    res = np.concatenate((res, X[labels == 2, :].mean(axis=0)[np.newaxis]), axis=0)
+    return res
+
+
+def algorithm_params_to_print(params):
+    return 'alpha1={}|alpha2={}|beta1={}|beta1={}'.format(round(params['alpha1'], 2), round(params['alpha2'], 2),
+                                                          round(params['beta1'], 2), round(params['beta2'], 2))
+
+
+def print_score(score):
+    print('Score is {}% match between expected labels clustering and kmeans cluster'.format((1 - score)*100))
 
 
 def all_zeros(arr):
