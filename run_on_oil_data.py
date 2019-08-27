@@ -55,7 +55,7 @@ def plot_2d_data(proj_data, params, labels):
     plt.scatter(kmeans.cluster_centers_[:, 0], kmeans.cluster_centers_[:, 1], c='orange', marker='*', s=128)
     # plt.legend()
     # plt.show()
-    plt.savefig('results/2D_{}.png'.format(utilities.algorithm_params_to_print(params)))
+    plt.savefig('results/oil_data_2D_{}.png'.format(utilities.algorithm_params_to_print(params)))
 
 
 def plot_3d_data(proj_data, params, labels):
@@ -75,7 +75,7 @@ def plot_3d_data(proj_data, params, labels):
     ax.scatter(kmeans.cluster_centers_[:, 0], kmeans.cluster_centers_[:, 1],
                kmeans.cluster_centers_[:, 2], c='orange', marker='*', s=128)
 
-    plt.savefig('results/3D_{}.png'.format(utilities.algorithm_params_to_print(params)))
+    plt.savefig('results/oil_data_3D_{}.png'.format(utilities.algorithm_params_to_print(params)))
 
 
 def evaluate_ng_subspace(algorithm_params, train_samples, train_samples_copy, validation_data, validation_labels, plot_data=False):
@@ -130,7 +130,17 @@ def main():
                                  beta1=ng.var.Array(1).asscalar(),
                                  beta2=ng.var.Array(1).asscalar())
     optimizer = ng.optimizers.OnePlusOne(instrumentation=instrum, budget=100)
-    recommendation = optimizer.minimize(score_ngca_algorithm_on_oil_dataset)
+    # recommendation = optimizer.minimize(score_ngca_algorithm_on_oil_dataset)
+
+    for _ in range(optimizer.budget):
+        try:
+            x = optimizer.ask()
+            value = score_ngca_algorithm_on_oil_dataset(*x.args, **x.kwargs)
+            optimizer.tell(x, value)
+        except ValueError as e:
+            print(e)
+
+    recommendation = optimizer.provide_recommendation()
 
     print('Optimal params:')
     print(recommendation.kwargs)

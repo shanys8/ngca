@@ -1,5 +1,8 @@
 from ngca_algorithm import run as run_ngca_algorithm
 import numpy as np
+import utilities
+import matplotlib
+from matplotlib import pyplot as plt
 
 
 def generate_synthetic_samples(number_of_samples, n, k, m, type_of_requested_subspace):
@@ -20,10 +23,9 @@ def generate_synthetic_samples(number_of_samples, n, k, m, type_of_requested_sub
     if type_of_requested_subspace == 'gaussian':
         G_X_initial = np.random.randn(k, m)
         X_to_sample = np.dot(Q_E, G_X_initial)
-    # elif type_of_requested_subspace == 'sub_gaussian':
-    #     # TODO check
-    #     U_X_initial = np.random.rand(k, m)
-    #     X_to_sample = np.dot(Q_E, U_X_initial)
+    elif type_of_requested_subspace == 'sub_gaussian':
+        U_X_initial = 2 * np.random.rand(k, m) - 1
+        X_to_sample = np.dot(Q_E, U_X_initial)
     # elif type_of_requested_subspace == 'super_gaussian':
     #     # TODO implement
     #     X_to_sample = []
@@ -42,7 +44,22 @@ def generate_synthetic_samples(number_of_samples, n, k, m, type_of_requested_sub
         sample_copy = np.dot(G_to_sample, np.random.randn(m, 1)) + np.dot(X_to_sample, (np.random.randn(m, 1)))
         samples_copy = np.append(samples_copy, sample_copy, axis=1)
 
-    return samples, samples_copy, Q_E
+    return samples.T, samples_copy.T, Q_E
+
+
+def plot_2d_data(proj_data_on_result_subspace, proj_data_on_synthetic_subspace, params):
+
+    synthetic_plt = plt.scatter(proj_data_on_synthetic_subspace[:, 0], proj_data_on_synthetic_subspace[:, 1], c='blue')
+    result_plot = plt.scatter(proj_data_on_result_subspace[:, 0], proj_data_on_result_subspace[:, 1], c='red')
+
+    plt.legend((synthetic_plt, result_plot),
+               ('Synthetic data', 'Result data'),
+               scatterpoints=1,
+               loc='up left',
+               ncol=1,
+               fontsize=8)
+
+    plt.savefig('results/synthetic_data_2D_{}.png'.format(utilities.algorithm_params_to_print(params)))
 
 
 def main():
@@ -65,9 +82,16 @@ def main():
     # E is the range of Q_E
 
     # Implementation of algorithm in the paper
-    approx_ng_subspace = run_ngca_algorithm(samples.T, samples_copy.T, algorithm_params)
+    approx_ng_subspace = run_ngca_algorithm(samples, samples_copy, algorithm_params)
 
-    # TODO compare Q_E and approx_ng_subspace
+    # Project samples on the result NG subspace
+    proj_data_on_result_subspace = np.concatenate((np.dot(samples, approx_ng_subspace), np.dot(samples_copy, approx_ng_subspace)), axis=0)
+
+    # Project samples on the known synthetic NG subspace
+    proj_data_on_synthetic_subspace = np.concatenate((np.dot(samples, Q_E), np.dot(samples_copy, Q_E)), axis=0)
+
+    # Plot
+    plot_2d_data(proj_data_on_result_subspace, proj_data_on_synthetic_subspace, algorithm_params)
 
     return approx_ng_subspace
 

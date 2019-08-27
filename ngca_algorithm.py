@@ -156,39 +156,13 @@ def score_ngca_algorithm_on_oil_dataset(alpha1, alpha2, beta1, beta2):
     validation_data = utilities.download_data('DataVdn')
     validation_labels = utilities.download_labels('DataVdn')
 
-    # Whiten samples
-    whiten_samples, c_samples, _ = whiten(train_samples)
-    whiten_samples_copy, c_samples_copy, _ = whiten(train_samples_copy)
-
-    assert_isotropic_model(whiten_samples)
-    assert_isotropic_model(whiten_samples_copy)
-
-    # Calculate matrices
-    matrix_phi = compute_matrix_phi(whiten_samples, whiten_samples_copy, alpha1)
-
-    matrix_psi = compute_matrix_psi(whiten_samples, whiten_samples_copy, alpha2)
-
-    # Calculate the gaussian eigenvalue for each matrix
-    gaussian_phi_eigenvalue = calculate_gaussian_phi_eigenvalue(alpha1)
-    gaussian_psi_eigenvalue = calculate_gaussian_psi_eigenvalue(alpha2)
-
-    # Calculate corresponding eigenvectors for the relevant eigenvalues -
-    # those which are far away beta from the gaussian eigenvalues
-    matrix_phi_relevant_eigenvectors = get_matrix_relevant_eigenvectors(matrix_phi,
-                                                                        gaussian_phi_eigenvalue, beta1)
-    matrix_psi_relevant_eigenvectors = get_matrix_relevant_eigenvectors(matrix_psi,
-                                                                        gaussian_psi_eigenvalue, beta2)
-
-    # Calculate E space - non gaussian space
-    result_space = union_subspace(matrix_phi_relevant_eigenvectors, matrix_psi_relevant_eigenvectors)
-
-    assert_all_columns_unit_vectors(result_space)
-
-    approx_ng_subspace = result_space
+    # run NGCA on train data
+    approx_ng_subspace = run_ngca_algorithm(train_samples, train_samples_copy, alpha1, alpha2, beta1, beta2)
 
     # Project validation data on the result subspace
     proj_data = np.dot(validation_data, approx_ng_subspace)
 
     # evaluate data clustering by algorithm
     score = utilities.get_result_score(proj_data, validation_labels)
+
     return score
