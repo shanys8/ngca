@@ -11,8 +11,6 @@ import constant
 import nevergrad as ng
 import utilities
 
-# First run - OPTIMAL PARAMS FROM NEVERGRAD: {'alpha1': 8.989709189727106, 'alpha2': 1.3066479566344726, 'beta1': 2.2563194428877242, 'beta2': -0.1265712190654496}
-
 
 def evaluate_test_data(algorithm_params):
 
@@ -81,10 +79,7 @@ def plot_3d_data(proj_data, params, labels):
 def evaluate_ng_subspace(algorithm_params, train_samples, train_samples_copy, validation_data, validation_labels, plot_data=False):
 
     # Run algorithm on samples from train data
-    start = time.time()
     approx_ng_subspace = run_ngca_algorithm(train_samples, train_samples_copy, algorithm_params)
-    end = time.time()
-    duration = end - start
 
     # Project validation data on the result subspace
     proj_data = np.dot(validation_data, approx_ng_subspace)
@@ -92,13 +87,13 @@ def evaluate_ng_subspace(algorithm_params, train_samples, train_samples_copy, va
     # evaluate data clustering by algorithm
     score = utilities.get_result_score(proj_data, validation_labels)
 
+    # score result
+    utilities.print_score(score)
+
     # plot data in 2D & 3D
     if plot_data:
         plot_2d_data(proj_data, algorithm_params, validation_labels)
         plot_3d_data(proj_data, algorithm_params, validation_labels)
-
-    # score result
-    utilities.print_score(score)
 
     return score
 
@@ -118,11 +113,15 @@ def scoring():
         'beta2': 0.64,
     }
 
-    score = evaluate_ng_subspace(algorithm_params, train_samples, train_samples_copy, validation_data, validation_labels)
+    score = evaluate_ng_subspace(algorithm_params, train_samples, train_samples_copy, validation_data, validation_labels, plot_data=True)
     return score
 
 
 def main():
+
+    # single run
+    # scoring()
+    # return
 
     # Optimize params on test and validation datasets
     instrum = ng.Instrumentation(alpha1=ng.var.Array(1).asscalar(),
@@ -132,13 +131,14 @@ def main():
     optimizer = ng.optimizers.OnePlusOne(instrumentation=instrum, budget=100)
     # recommendation = optimizer.minimize(score_ngca_algorithm_on_oil_dataset)
 
-    for _ in range(optimizer.budget):
+    for i in range(optimizer.budget):
         try:
+            print('{} out of {}'.format(i, optimizer.budget))
             x = optimizer.ask()
             value = score_ngca_algorithm_on_oil_dataset(*x.args, **x.kwargs)
             optimizer.tell(x, value)
-        except ValueError as e:
-            print(e)
+        except:
+            print('Error')
 
     recommendation = optimizer.provide_recommendation()
 

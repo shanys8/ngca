@@ -51,7 +51,7 @@ def algorithm_params_to_print(params):
 
 
 def print_score(score):
-    print('Score is {}% match between expected labels clustering and kmeans cluster'.format((1 - score)*100))
+    print('Score is {}% match between expected labels clustering and kmeans cluster'.format(round((1 - score)*100, 2)))
 
 
 def all_zeros(arr):

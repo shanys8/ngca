@@ -110,8 +110,8 @@ def is_unit_vector(vector):
 def run_ngca_algorithm(samples, samples_copy, alpha1, alpha2, beta1, beta2):
 
     # Whiten samples
-    whiten_samples, c_samples, _ = whiten(samples)
-    whiten_samples_copy, c_samples_copy, _ = whiten(samples_copy)
+    whiten_samples, _, _ = whiten(samples)
+    whiten_samples_copy, _, _ = whiten(samples_copy)
 
     assert_isotropic_model(whiten_samples)
     assert_isotropic_model(whiten_samples_copy)
@@ -135,9 +135,10 @@ def run_ngca_algorithm(samples, samples_copy, alpha1, alpha2, beta1, beta2):
     # Calculate E space - non gaussian space
     result_space = union_subspace(matrix_phi_relevant_eigenvectors, matrix_psi_relevant_eigenvectors)
 
-    assert_all_columns_unit_vectors(result_space)
+    whiten_result_space, _, _ = whiten(result_space)  # try whiten the subspace before return due to matlab code
 
-    return result_space
+    return whiten_result_space
+    # return result_space
 
 
 def run(samples, samples_copy, params):
