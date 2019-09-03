@@ -9,6 +9,7 @@ from mpl_toolkits.mplot3d import Axes3D
 from sklearn.metrics.cluster import adjusted_rand_score
 import constant
 import nevergrad as ng
+from concurrent import futures
 import utilities
 
 
@@ -131,6 +132,14 @@ def main():
     optimizer = ng.optimizers.OnePlusOne(instrumentation=instrum, budget=100)
     # recommendation = optimizer.minimize(score_ngca_algorithm_on_oil_dataset)
 
+
+    # # several workers
+    # optimizer = ng.optimizers.OnePlusOne(instrumentation=instrum, budget=100, num_workers=5)
+    # with futures.ProcessPoolExecutor(max_workers=optimizer.num_workers) as executor:
+    #     recommendation = optimizer.minimize(score_ngca_algorithm_on_oil_dataset, executor=executor, batch_mode=False)
+
+
+    # ask and tell
     for i in range(optimizer.budget):
         try:
             print('{} out of {}'.format(i, optimizer.budget))

@@ -45,15 +45,23 @@ def generate_synthetic_samples(number_of_samples, n, k, m, type_of_requested_sub
     return samples.T, samples_copy.T, Q_E
 
 
-def plot_2d_data(proj_data_on_result_subspace, proj_data_on_synthetic_subspace, params, type_of_requested_subspace):
+def plot_2d_data(data, synthetic_subspace, approx_ng_subspace, params, type_of_requested_subspace):
+
+    # Project samples on the result NG subspace
+    proj_data_on_result_subspace = np.dot(data, approx_ng_subspace)
+    # Project samples on the known synthetic NG subspace
+    proj_data_on_synthetic_subspace = np.dot(data, synthetic_subspace)
 
     f = plt.figure()
-    f, axes = plt.subplots(ncols=2)
-    sc = axes[0].scatter(proj_data_on_synthetic_subspace[:, 0], proj_data_on_synthetic_subspace[:, 1], c='blue', alpha=0.5)
-    axes[0].set_xlabel('Projected data on known NG subspace', labelpad=5)
+    f, axes = plt.subplots(ncols=3)
+    sc = axes[0].scatter(data[:, 0], data[:, 1], c='green', alpha=0.5)
+    axes[0].set_xlabel('Initial data', labelpad=5)
 
-    axes[1].scatter(proj_data_on_result_subspace[:, 0], proj_data_on_result_subspace[:, 1], c='red', alpha=0.5)
-    axes[1].set_xlabel('Projected data on result NG subspace', labelpad=5)
+    axes[1].scatter(proj_data_on_synthetic_subspace[:, 0], proj_data_on_synthetic_subspace[:, 1], c='blue', alpha=0.5)
+    axes[1].set_xlabel('Projected data on \nknown NG subspace', labelpad=5)
+
+    axes[2].scatter(proj_data_on_result_subspace[:, 0], proj_data_on_result_subspace[:, 1], c='red', alpha=0.5)
+    axes[2].set_xlabel('Projected data on \nresult NG subspace', labelpad=5)
 
     plt.savefig('results/synthetic_data_2D_{}_{}.png'.format(type_of_requested_subspace, utilities.algorithm_params_to_print(params)))
 
@@ -75,19 +83,11 @@ def main():
 
     samples, samples_copy, Q_E = generate_synthetic_samples(number_of_samples, n, k, m, type_of_requested_subspace)
 
-    # E is the range of Q_E
+    all_samples = np.concatenate((samples, samples_copy), axis=0)  # E is the range of Q_E
 
-    # Implementation of algorithm in the paper
     approx_ng_subspace = run_ngca_algorithm(samples, samples_copy, algorithm_params)
 
-    # Project samples on the result NG subspace
-    proj_data_on_result_subspace = np.concatenate((np.dot(samples, approx_ng_subspace), np.dot(samples_copy, approx_ng_subspace)), axis=0)
-
-    # Project samples on the known synthetic NG subspace
-    proj_data_on_synthetic_subspace = np.concatenate((np.dot(samples, Q_E), np.dot(samples_copy, Q_E)), axis=0)
-
-    # Plot
-    plot_2d_data(proj_data_on_result_subspace, proj_data_on_synthetic_subspace, algorithm_params, type_of_requested_subspace)
+    plot_2d_data(all_samples, Q_E, approx_ng_subspace, algorithm_params, type_of_requested_subspace)
 
     return approx_ng_subspace
 
