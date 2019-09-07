@@ -88,12 +88,6 @@ def whiten(X):
     return X_w, c, W
 
 
-def assert_isotropic_model(X):
-    assert (np.allclose(np.mean(X, axis=0), np.zeros(X.shape[1]), rtol=1.e-1,
-                        atol=1.e-1))  # each column vector should have mean zero
-    cov_X = np.cov(X, rowvar=False, bias=True)
-    assert (cov_X.shape[0] == cov_X.shape[1]) and np.allclose(cov_X, np.eye(cov_X.shape[0]), rtol=1.e-1,
-                                                              atol=1.e-1)  # covariance matrix should by identity
 
 
 def assert_all_columns_unit_vectors(matrix):
@@ -113,8 +107,8 @@ def run_ngca_algorithm(samples, samples_copy, alpha1, alpha2, beta1, beta2):
     whiten_samples, _, _ = whiten(samples)
     whiten_samples_copy, _, _ = whiten(samples_copy)
 
-    assert_isotropic_model(whiten_samples)
-    assert_isotropic_model(whiten_samples_copy)
+    utilities.assert_isotropic_model(whiten_samples)
+    utilities.assert_isotropic_model(whiten_samples_copy)
 
     # Calculate matrices
     matrix_phi = compute_matrix_phi(whiten_samples, whiten_samples_copy, alpha1)

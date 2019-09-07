@@ -3,6 +3,8 @@ import numpy as np
 import utilities
 import matplotlib
 from matplotlib import pyplot as plt
+from sklearn.decomposition import PCA
+from sklearn.preprocessing import StandardScaler
 
 
 def generate_synthetic_samples(number_of_samples, n, k, m, type_of_requested_subspace):
@@ -47,6 +49,8 @@ def generate_synthetic_samples(number_of_samples, n, k, m, type_of_requested_sub
 
 def plot_2d_data(data, synthetic_subspace, approx_ng_subspace, params, type_of_requested_subspace):
 
+
+    pca_data = get_PCA_data_for_plot(data)
     # Project samples on the result NG subspace
     proj_data_on_result_subspace = np.dot(data, approx_ng_subspace)
     # Project samples on the known synthetic NG subspace
@@ -54,8 +58,8 @@ def plot_2d_data(data, synthetic_subspace, approx_ng_subspace, params, type_of_r
 
     f = plt.figure()
     f, axes = plt.subplots(ncols=3)
-    sc = axes[0].scatter(data[:, 0], data[:, 1], c='green', alpha=0.5)
-    axes[0].set_xlabel('Initial data', labelpad=5)
+    sc = axes[0].scatter(pca_data[:, 0], pca_data[:, 1], c='green', alpha=0.5)
+    axes[0].set_xlabel('PCA initial data', labelpad=5)
 
     axes[1].scatter(proj_data_on_synthetic_subspace[:, 0], proj_data_on_synthetic_subspace[:, 1], c='blue', alpha=0.5)
     axes[1].set_xlabel('Projected data on \nknown NG subspace', labelpad=5)
@@ -66,13 +70,20 @@ def plot_2d_data(data, synthetic_subspace, approx_ng_subspace, params, type_of_r
     plt.savefig('results/synthetic_data_2D_{}_{}.png'.format(type_of_requested_subspace, utilities.algorithm_params_to_print(params)))
 
 
+def get_PCA_data_for_plot(data):
+    data = StandardScaler().fit_transform(data)
+    pca = PCA(n_components=2, svd_solver='full')
+    principalComponents = pca.fit_transform(data)
+    return principalComponents
+
+
 def main():
 
     m = 5
     n = 10  # dimension - number of features
     k = 3  # NG subspace dimension
     number_of_samples = 2000  # number of samples
-    type_of_requested_subspace = 'gaussian'  # sub_gaussian | gaussian | super_gaussian
+    type_of_requested_subspace = 'sub_gaussian'  # sub_gaussian | gaussian | super_gaussian
 
     algorithm_params = {
         'alpha1': 0.7,

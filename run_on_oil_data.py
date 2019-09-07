@@ -119,7 +119,7 @@ def scoring():
 
 
 def main():
-
+    # utilities.compare_labels_for_blanchard_result('DataVdn')
     # single run
     # scoring()
     # return

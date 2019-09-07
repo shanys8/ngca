@@ -34,9 +34,17 @@ def download_labels(file_name):
 def get_result_score(proj_data, labels_true):
     kmeans = KMeans(n_clusters=3, random_state=0).fit(proj_data)
     labels_pred = kmeans.labels_
-    score = adjusted_rand_score(labels_true, labels_pred)
     # 0.0 for random labeling and samples and exactly 1.0 when the clusterings are identical
+    score = adjusted_rand_score(labels_true, labels_pred)
     return 1 - score  # for the purpose of minimization of the score
+
+
+def compare_labels_for_blanchard_result(file_name):
+    labels_pred = np.loadtxt(fname="datasets/blanchard_kmeans_labels_{}.txt".format(file_name))
+    labels_true = download_labels(file_name)
+    # 0.0 for random labeling and samples and exactly 1.0 when the clusterings are identical
+    score = adjusted_rand_score(labels_true, labels_pred)
+    print(score)
 
 
 def calculate_centers_by_labels(X, labels):
@@ -52,6 +60,14 @@ def algorithm_params_to_print(params):
 
 def print_score(score):
     print('Score is {}% match between expected labels clusters and kmeans clusters'.format(round((1 - score)*100, 2)))
+
+
+def assert_isotropic_model(X):
+    assert (np.allclose(np.mean(X, axis=0), np.zeros(X.shape[1]), rtol=1.e-1,
+                        atol=1.e-1))  # each column vector should have mean zero
+    cov_X = np.cov(X, rowvar=False, bias=True)
+    assert (cov_X.shape[0] == cov_X.shape[1]) and np.allclose(cov_X, np.eye(cov_X.shape[0]), rtol=5.e-1,
+                                                              atol=5.e-1)  # covariance matrix should by identity
 
 
 def all_zeros(arr):
