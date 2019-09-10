@@ -2,7 +2,7 @@ import numpy as np
 import math
 from numpy import linalg as LA
 import utilities
-from sklearn.cluster import KMeans
+from sklearn.svm import SVC
 
 # Features as columns
 # Samples as rows
@@ -142,7 +142,7 @@ def run(samples, samples_copy, params):
     return approx_ng_subspace
 
 
-def score_ngca_algorithm_on_oil_dataset(alpha1, alpha2, beta1, beta2):
+def score_ngca_on_oil_data_by_kmeans(alpha1, alpha2, beta1, beta2):
 
     # get samples from train data
     train_samples, train_samples_copy = utilities.download_data('DataTrn', separate_data=True)
@@ -158,7 +158,7 @@ def score_ngca_algorithm_on_oil_dataset(alpha1, alpha2, beta1, beta2):
     proj_data = np.dot(validation_data, approx_ng_subspace)
 
     # evaluate data clustering by algorithm
-    score = utilities.get_result_score(proj_data, validation_labels, 3)
+    score = utilities.get_result_score_by_kmeans(proj_data, validation_labels, 3)
 
     return score
 
@@ -176,6 +176,33 @@ def score_ngca_algorithm_on_clover_dataset(alpha1, alpha2, beta1, beta2):
     proj_data = np.dot(shuffled_data, approx_ng_subspace)
 
     # evaluate data clustering by algorithm
-    score = utilities.get_result_score(proj_data, clover_labels, 4)
+    score = utilities.get_result_score_by_kmeans(proj_data, clover_labels, 4)
 
+    return score
+
+
+def score_ngca_on_oil_data_by_svm(alpha1, alpha2, beta1, beta2):
+
+    # get samples and labels from train and validation data
+    train_data = utilities.download_data('DataTrn')
+    train_labels = utilities.download_labels('DataTrn')
+    validation_data = utilities.download_data('DataVdn')
+    validation_labels = utilities.download_labels('DataVdn')
+
+    # Run algorithm on samples from train data
+    train_samples, train_samples_copy = utilities.download_data('DataTrn', separate_data=True)
+    approx_ng_subspace = run_ngca_algorithm(train_samples, train_samples_copy, alpha1, alpha2, beta1, beta2)
+
+    # Project train and validation data on the result subspace
+    proj_train_data = np.dot(train_data, approx_ng_subspace)
+    proj_validation_data = np.dot(validation_data, approx_ng_subspace)
+
+    # build SVM classifier - fit by train data
+    clf = SVC(gamma='auto')  # TODO adjust params
+    clf.fit(proj_train_data, train_labels)
+    predicted_valiation_labels = clf.predict(proj_validation_data)
+
+    # assign score
+    # score = clf.score(proj_validation_data, validation_labels)  # another way for score
+    score = utilities.score_labels(validation_labels, predicted_valiation_labels)  # we want to minimize score
     return score

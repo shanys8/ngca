@@ -66,9 +66,13 @@ def generate_shuffled_data(data):
     return shuffled_data.T
 
 
-def get_result_score(proj_data, labels_true, components_num):
+def get_result_score_by_kmeans(proj_data, labels_true, components_num):
     kmeans = KMeans(n_clusters=components_num, random_state=0).fit(proj_data)
     labels_pred = kmeans.labels_
+    return score_labels(labels_true, labels_pred)
+
+
+def score_labels(labels_true, labels_pred):
     # 0.0 for random labeling and samples and exactly 1.0 when the clusterings are identical
     score = adjusted_rand_score(labels_true, labels_pred)
     return 1 - score  # for the purpose of minimization of the score
@@ -94,11 +98,11 @@ def algorithm_params_to_print(params):
 
 
 def print_score_fixed(score):
-    print('Score is {}% match between expected labels clusters and kmeans clusters'.format(round((1 - score)*100, 2)))
+    print('Score is {}% match between predicted labels and result labels'.format(round((1 - score)*100, 2)))
 
 
 def print_score(score):
-    print('Score is {}% match between expected labels clusters and kmeans clusters'.format(round(score*100, 2)))
+    print('Score is {}% match between predicted labels and result labels'.format(round(score*100, 2)))
 
 
 def assert_isotropic_model(X):
