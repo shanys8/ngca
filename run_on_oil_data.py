@@ -29,10 +29,10 @@ def evaluate_test_data(algorithm_params):
     proj_data = np.dot(test_data, approx_ng_subspace)
 
     # evaluate data clustering by algorithm
-    score = utilities.get_result_score(proj_data, test_labels)
+    score = utilities.get_result_score(proj_data, test_labels, 3)
 
     print('Optimal Score on test data:')
-    utilities.print_score(score)
+    utilities.print_score_fixed(score)
 
     # plot data in 2D & 3D
     plot_2d_data(proj_data, algorithm_params, test_labels)
@@ -47,7 +47,7 @@ def plot_2d_data(proj_data, params, labels):
     centers_by_labels = utilities.calculate_centers_by_labels(data_for_clusters, labels)
 
     # plot first two dimensions of data
-    plt.scatter(proj_data[:, 0], proj_data[:, 1], c=labels, cmap=matplotlib.colors.ListedColormap(constant.CLUSTERS_COLORS))
+    plt.scatter(proj_data[:, 0], proj_data[:, 1], c=labels, cmap=matplotlib.colors.ListedColormap(constant.CLUSTERS_3_COLORS))
     # plot centers of labels
     plt.scatter(centers_by_labels[:, 0], centers_by_labels[:, 1], c='yellow', marker='*', s=128)
     # plot centers of 3 clusters by kmeans result
@@ -67,7 +67,7 @@ def plot_3d_data(proj_data, params, labels):
 
     # plot first three dimensions of data
     ax.scatter(proj_data[:, 0], proj_data[:, 1], proj_data[:, 2], c=labels,
-               cmap=matplotlib.colors.ListedColormap(constant.CLUSTERS_COLORS))
+               cmap=matplotlib.colors.ListedColormap(constant.CLUSTERS_3_COLORS))
     # plot centers of labels
     ax.scatter(centers_by_labels[:, 0], centers_by_labels[:, 1], centers_by_labels[:, 2], c='yellow', marker='*', s=128)
     # plot centers of 3 clusters by kmeans result
@@ -86,10 +86,10 @@ def evaluate_ng_subspace(algorithm_params, train_samples, train_samples_copy, va
     proj_data = np.dot(validation_data, approx_ng_subspace)
 
     # evaluate data clustering by algorithm
-    score = utilities.get_result_score(proj_data, validation_labels)
+    score = utilities.get_result_score(proj_data, validation_labels, 3)
 
     # score result
-    utilities.print_score(score)
+    utilities.print_score_fixed(score)
 
     # plot data in 2D & 3D
     if plot_data:
@@ -119,11 +119,6 @@ def scoring():
 
 
 def main():
-    # utilities.compare_labels_for_blanchard_result('DataVdn')
-    # single run
-    # scoring()
-    # return
-
     # Optimize params on test and validation datasets
     instrum = ng.Instrumentation(alpha1=ng.var.Array(1).asscalar(),
                                  alpha2=ng.var.Array(1).asscalar(),
@@ -131,13 +126,6 @@ def main():
                                  beta2=ng.var.Array(1).asscalar())
     optimizer = ng.optimizers.OnePlusOne(instrumentation=instrum, budget=100)
     # recommendation = optimizer.minimize(score_ngca_algorithm_on_oil_dataset)
-
-
-    # # several workers
-    # optimizer = ng.optimizers.OnePlusOne(instrumentation=instrum, budget=100, num_workers=5)
-    # with futures.ProcessPoolExecutor(max_workers=optimizer.num_workers) as executor:
-    #     recommendation = optimizer.minimize(score_ngca_algorithm_on_oil_dataset, executor=executor, batch_mode=False)
-
 
     # ask and tell
     for i in range(optimizer.budget):
@@ -160,7 +148,7 @@ def main():
                                                 recommendation.kwargs['alpha2'],
                                                 recommendation.kwargs['beta1'],
                                                 recommendation.kwargs['beta2'])
-    utilities.print_score(score)
+    utilities.print_score_fixed(score)
 
     # Run algorithm with optimal params on test data and evaluate score
     # Plot projected test data on the result NG subspace

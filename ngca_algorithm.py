@@ -2,7 +2,7 @@ import numpy as np
 import math
 from numpy import linalg as LA
 import utilities
-
+from sklearn.cluster import KMeans
 
 # Features as columns
 # Samples as rows
@@ -158,6 +158,24 @@ def score_ngca_algorithm_on_oil_dataset(alpha1, alpha2, beta1, beta2):
     proj_data = np.dot(validation_data, approx_ng_subspace)
 
     # evaluate data clustering by algorithm
-    score = utilities.get_result_score(proj_data, validation_labels)
+    score = utilities.get_result_score(proj_data, validation_labels, 3)
+
+    return score
+
+
+def score_ngca_algorithm_on_clover_dataset(alpha1, alpha2, beta1, beta2):
+
+    samples, samples_copy = utilities.download_data('shuffled_clover', separate_data=True)
+    shuffled_data = utilities.download_data('shuffled_clover')
+    clover_labels = utilities.download('clover_labels')
+
+    # run NGCA on shuffled data
+    approx_ng_subspace = run_ngca_algorithm(samples, samples_copy, alpha1, alpha2, beta1, beta2)
+
+    # Project shuffled_data on the result subspace
+    proj_data = np.dot(shuffled_data, approx_ng_subspace)
+
+    # evaluate data clustering by algorithm
+    score = utilities.get_result_score(proj_data, clover_labels, 4)
 
     return score

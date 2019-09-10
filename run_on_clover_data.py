@@ -5,56 +5,44 @@ import matplotlib
 from matplotlib import pyplot as plt
 import itertools
 import math
+from sklearn.cluster import KMeans
+from sklearn.metrics.cluster import adjusted_rand_score
+import constant
+import nevergrad as ng
+from ngca_algorithm import score_ngca_algorithm_on_clover_dataset as score_ngca_algorithm_on_clover_dataset
 
 
 def plot_2d_data(clover_data, shuffled_data, result_data):
 
+    kmeans_clover = KMeans(n_clusters=4, random_state=0).fit(clover_data)  # Get 4 clusters
+    clover_kmeans_labels = kmeans_clover.labels_
+
+    kmeans_result = KMeans(n_clusters=4, random_state=0).fit(result_data)  # Get 4 clusters
+    result_kmeans_labels = kmeans_result.labels_
+
+    # evaluate data clustering by algorithm
+    score = adjusted_rand_score(clover_kmeans_labels, result_kmeans_labels)
+    # score result
+    utilities.print_score(score)
+
     f = plt.figure()
-    f, axes = plt.subplots(ncols=3)
-    sc = axes[0].scatter(clover_data[:, 0], clover_data[:, 1], c='blue', alpha=0.5)
-    axes[0].set_xlabel('Clover', labelpad=5)
+    f, axes = plt.subplots(ncols=4)
+    sc = axes[0].scatter(clover_data[:, 0], clover_data[:, 1], c=clover_kmeans_labels, cmap=matplotlib.colors.ListedColormap(constant.CLUSTERS_4_COLORS))
+    axes[0].set_xlabel('Clover kmeans labels', labelpad=5)
 
     axes[1].scatter(shuffled_data[:, 0], shuffled_data[:, 1], c='blue', alpha=0.5)
     axes[1].set_xlabel('Shuffled', labelpad=5)
 
-    axes[2].scatter(result_data[:, 0], result_data[:, 1], c='blue', alpha=0.5)
-    axes[2].set_xlabel('Result', labelpad=5)
+    axes[2].scatter(result_data[:, 0], result_data[:, 1], c=clover_kmeans_labels, cmap=matplotlib.colors.ListedColormap(constant.CLUSTERS_4_COLORS))
+    axes[2].set_xlabel('Result by \nclover labels', labelpad=5)
+
+    axes[3].scatter(result_data[:, 0], result_data[:, 1], c=result_kmeans_labels, cmap=matplotlib.colors.ListedColormap(constant.CLUSTERS_4_COLORS))
+    axes[3].set_xlabel('Result by \nkmeans labels', labelpad=5)
 
     plt.savefig('results/clover.png')
 
 
-def generate_clover_data(n):
-    X = np.empty((2, 0), float)
-    count = 0
-
-    while count < n:
-        d = 2 * np.random.rand(2, n) - 1
-        index = np.argwhere(np.sum(np.power(d, 2), axis=0) < np.sqrt(np.abs(d[0, :] * d[1, :])))
-        index = list(itertools.chain(*index))
-        count = count + np.size(index)
-        X = np.append(X, np.take(d, index, axis=1), axis=1)
-
-    result = math.sqrt(10) * X[:, :n]
-    return result
-
-
-def generate_shuffled_data(data):
-    scaling = np.power(10, np.arange(-1, 1.2, 0.2))
-
-    shuffled_data = data
-    s = 0
-    while s < np.size(scaling):
-        shuffled_data = scaling[s] * np.append(shuffled_data, np.random.randn(1, np.shape(shuffled_data)[1]), axis=0)
-        s = s + 1
-
-    Q, R = np.linalg.qr(np.random.randn(13, 13))
-
-    shuffled_data = np.dot(Q, shuffled_data)
-    return shuffled_data.T
-
-
-def main():
-
+def scoring():
     algorithm_params = {
         'alpha1': 0.7,
         'alpha2': 0.3,
@@ -63,9 +51,14 @@ def main():
     }
 
     n = 1000
+    clover_data = utilities.generate_clover_data(n)
+    # np.savetxt('datasets/clover.txt', clover_data.T, delimiter=' ')
 
-    clover_data = generate_clover_data(n)
-    shuffled_data = generate_shuffled_data(clover_data)
+    # kmeans_clover = KMeans(n_clusters=4, random_state=0).fit(clover_data.T)  # Get 4 clusters
+    # np.savetxt('datasets/clover_labels.txt', kmeans_clover.labels_, fmt='%d', delimiter=' ')
+
+    shuffled_data = utilities.generate_shuffled_data(clover_data)
+    # np.savetxt('datasets/shuffled_clover.txt', shuffled_data, delimiter=' ')
 
     # Implementation of algorithm in the paper
     approx_ng_subspace = run_ngca_algorithm(shuffled_data[:int(n/2), :], shuffled_data[int(n/2):, :], algorithm_params)
@@ -75,7 +68,36 @@ def main():
 
     plot_2d_data(clover_data.T, shuffled_data, projected_data)
 
-    return 0
+
+def main():
+
+    instrum = ng.Instrumentation(alpha1=ng.var.Array(1).asscalar(),
+                                 alpha2=ng.var.Array(1).asscalar(),
+                                 beta1=ng.var.Array(1).asscalar(),
+                                 beta2=ng.var.Array(1).asscalar())
+    optimizer = ng.optimizers.CMA(instrumentation=instrum, budget=100)
+
+    for i in range(optimizer.budget):
+        try:
+            print('{} out of {}'.format(i, optimizer.budget))
+            x = optimizer.ask()
+            value = score_ngca_algorithm_on_clover_dataset(*x.args, **x.kwargs)
+            optimizer.tell(x, value)
+        except:
+            print('Error')
+
+    recommendation = optimizer.provide_recommendation()
+
+    print('Optimal params:')
+    print(recommendation.kwargs)
+
+    print('Optimal Score on optimal params:')
+    # score result
+    score = score_ngca_algorithm_on_clover_dataset(recommendation.kwargs['alpha1'],
+                                                recommendation.kwargs['alpha2'],
+                                                recommendation.kwargs['beta1'],
+                                                recommendation.kwargs['beta2'])
+    utilities.print_score_fixed(score)
 
 
 if __name__ == "__main__":

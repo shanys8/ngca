@@ -10,7 +10,12 @@ import matplotlib.pyplot as plt
 from sklearn.feature_selection import SelectFromModel
 from sklearn.cluster import KMeans
 from mpl_toolkits.mplot3d import Axes3D
+import itertools
 from sklearn.metrics.cluster import adjusted_rand_score
+
+
+def download(file_name):
+    return np.loadtxt(fname="datasets/{}.txt".format(file_name))
 
 
 def download_data(file_name, separate_data=False):
@@ -31,8 +36,38 @@ def download_labels(file_name):
     return int_labels.astype(int)
 
 
-def get_result_score(proj_data, labels_true):
-    kmeans = KMeans(n_clusters=3, random_state=0).fit(proj_data)
+def generate_clover_data(n):
+    X = np.empty((2, 0), float)
+    count = 0
+
+    while count < n:
+        d = 2 * np.random.rand(2, n) - 1
+        index = np.argwhere(np.sum(np.power(d, 2), axis=0) < np.sqrt(np.abs(d[0, :] * d[1, :])))
+        index = list(itertools.chain(*index))
+        count = count + np.size(index)
+        X = np.append(X, np.take(d, index, axis=1), axis=1)
+
+    result = math.sqrt(10) * X[:, :n]
+    return result
+
+
+def generate_shuffled_data(data):
+    scaling = np.power(10, np.arange(-1, 1.2, 0.2))
+
+    shuffled_data = data
+    s = 0
+    while s < np.size(scaling):
+        shuffled_data = scaling[s] * np.append(shuffled_data, np.random.randn(1, np.shape(shuffled_data)[1]), axis=0)
+        s = s + 1
+
+    Q, R = np.linalg.qr(np.random.randn(13, 13))
+
+    shuffled_data = np.dot(Q, shuffled_data)
+    return shuffled_data.T
+
+
+def get_result_score(proj_data, labels_true, components_num):
+    kmeans = KMeans(n_clusters=components_num, random_state=0).fit(proj_data)
     labels_pred = kmeans.labels_
     # 0.0 for random labeling and samples and exactly 1.0 when the clusterings are identical
     score = adjusted_rand_score(labels_true, labels_pred)
@@ -44,7 +79,7 @@ def compare_labels_for_blanchard_result(file_name):
     labels_true = download_labels(file_name)
     # 0.0 for random labeling and samples and exactly 1.0 when the clusterings are identical
     score = adjusted_rand_score(labels_true, labels_pred)
-    print(score)
+    print_score(score)
 
 
 def calculate_centers_by_labels(X, labels):
@@ -58,8 +93,12 @@ def algorithm_params_to_print(params):
                                                           round(params['beta1'], 2), round(params['beta2'], 2))
 
 
-def print_score(score):
+def print_score_fixed(score):
     print('Score is {}% match between expected labels clusters and kmeans clusters'.format(round((1 - score)*100, 2)))
+
+
+def print_score(score):
+    print('Score is {}% match between expected labels clusters and kmeans clusters'.format(round(score*100, 2)))
 
 
 def assert_isotropic_model(X):
