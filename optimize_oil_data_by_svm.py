@@ -32,9 +32,12 @@ def evaluate_test_data_by_svm(algorithm_params):
     # Project train and test data on the result subspace
     proj_train_data = np.dot(train_data, approx_ng_subspace)
     proj_test_data = np.dot(test_data, approx_ng_subspace)
+    # # experiment to see score in compare to SVM run on test data
+    # proj_train_data = utilities.download_data('proj_train_data')
+    # proj_test_data = utilities.download_data('proj_test_data')
 
-    # build SVM classifier - fit by train data
-    clf = SVC(gamma='auto')  # TODO adjust params
+    # build SVM classifier - fit by train data and check predication of test data
+    clf = SVC(gamma='auto')
     clf.fit(proj_train_data, train_labels)
     predicted_test_labels = clf.predict(proj_test_data)
 
@@ -44,19 +47,19 @@ def evaluate_test_data_by_svm(algorithm_params):
     print('Score on test data:')
     utilities.print_score_fixed(score)
 
-    plot_2d_data(proj_test_data, algorithm_params, test_labels)
-    plot_3d_data(proj_test_data, algorithm_params, test_labels)
+    plot_2d_data(proj_test_data, test_labels, algorithm_params)
+    plot_3d_data(proj_test_data, test_labels, algorithm_params)
 
     return
 
 
-def plot_2d_data(proj_data, params, labels):
+def plot_2d_data(proj_data, labels, params=None):
     # plot first two dimensions of data
     plt.scatter(proj_data[:, 0], proj_data[:, 1], c=labels, cmap=matplotlib.colors.ListedColormap(constant.CLUSTERS_3_COLORS))
     plt.savefig('results/oil_data_svm_2D_{}.png'.format(utilities.algorithm_params_to_print(params)))
 
 
-def plot_3d_data(proj_data, params, labels):
+def plot_3d_data(proj_data, labels, params=None):
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
 
@@ -111,18 +114,18 @@ def main():
                                  alpha2=ng.var.Array(1).asscalar(),
                                  beta1=ng.var.Array(1).asscalar(),
                                  beta2=ng.var.Array(1).asscalar())
-    optimizer = ng.optimizers.OnePlusOne(instrumentation=instrum, budget=100)
+    optimizer = ng.optimizers.DiagonalCMA(instrumentation=instrum, budget=100)
     # recommendation = optimizer.minimize(score_ngca_on_oil_data_by_kmeans)
 
     # ask and tell
     for i in range(optimizer.budget):
         try:
-            print('{} out of {}'.format(i, optimizer.budget))
             x = optimizer.ask()
             value = score_ngca_on_oil_data_by_svm(*x.args, **x.kwargs)
+            print('{} out of {} - value {}'.format(i, optimizer.budget, value))
             optimizer.tell(x, value)
         except:
-            print('Error')
+            print('{} out of {} - error'.format(i, optimizer.budget))
 
     recommendation = optimizer.provide_recommendation()
 

@@ -197,8 +197,8 @@ def score_ngca_on_oil_data_by_svm(alpha1, alpha2, beta1, beta2):
     proj_train_data = np.dot(train_data, approx_ng_subspace)
     proj_validation_data = np.dot(validation_data, approx_ng_subspace)
 
-    # build SVM classifier - fit by train data
-    clf = SVC(gamma='auto')  # TODO adjust params
+    # build SVM classifier - fit by train data and check predication of validation data
+    clf = SVC(gamma='auto')
     clf.fit(proj_train_data, train_labels)
     predicted_valiation_labels = clf.predict(proj_validation_data)
 

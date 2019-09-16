@@ -93,8 +93,11 @@ def calculate_centers_by_labels(X, labels):
 
 
 def algorithm_params_to_print(params):
-    return 'alpha1={}|alpha2={}|beta1={}|beta1={}'.format(round(params['alpha1'], 2), round(params['alpha2'], 2),
+    if params:
+        return 'alpha1={}|alpha2={}|beta1={}|beta1={}'.format(round(params['alpha1'], 2), round(params['alpha2'], 2),
                                                           round(params['beta1'], 2), round(params['beta2'], 2))
+    else:
+        return 'blanchard'
 
 
 def print_score_fixed(score):
