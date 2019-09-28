@@ -117,8 +117,8 @@ def scoring_by_kmeans():
 #     train_labels = utilities.download_labels('DataTrn')
 #     validation_labels = utilities.download_labels('DataVdn')
 #     clf.fit(train_data, train_labels)
-#     predicted_valiation_labels = clf.predict(validation_data)
-#     score = adjusted_rand_score(validation_labels, predicted_valiation_labels)
+#     predicted_validation_labels = clf.predict(validation_data)
+#     score = adjusted_rand_score(validation_labels, predicted_validation_labels)
 #
 #     return score
 

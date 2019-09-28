@@ -12,7 +12,9 @@ from sklearn.cluster import KMeans
 from mpl_toolkits.mplot3d import Axes3D
 import itertools
 from sklearn.metrics.cluster import adjusted_rand_score
-
+from sklearn.svm import SVC
+from sklearn.decomposition import PCA
+from sklearn.preprocessing import StandardScaler
 
 def download(file_name):
     return np.loadtxt(fname="datasets/{}.txt".format(file_name))
@@ -64,6 +66,42 @@ def generate_shuffled_data(data):
 
     shuffled_data = np.dot(Q, shuffled_data)
     return shuffled_data.T
+
+
+def perform_pca(data):
+    data = StandardScaler().fit_transform(data)
+    pca = PCA(n_components=3, svd_solver='full')
+    principal_components = pca.fit_transform(data)
+    return principal_components
+
+
+# score initial data (with or without PCA run) by SVM model
+def score_initial_data_by_svm(under_pca=False):
+    # get samples and labels from train and validation data
+    train_data = download_data('DataTrn')
+    train_labels = download_labels('DataTrn')
+    validation_data = download_data('DataVdn')
+    validation_labels = download_labels('DataVdn')
+    test_data = download_data('DataTst')
+    test_labels = download_labels('DataTst')
+
+    # build SVM classifier - fit by train data and check predication of validation and test data
+    clf = SVC(gamma='auto')
+    if under_pca:
+        train_data = perform_pca(train_data)
+        validation_data = perform_pca(validation_data)
+        test_data = perform_pca(test_data)
+        clf.fit(train_data, train_labels)
+        validation_score = clf.score(validation_data, validation_labels)
+        test_score = clf.score(test_data, test_labels)
+    else:
+        clf.fit(train_data, train_labels)
+        predicted_validation_labels = clf.predict(validation_data)
+        validation_score = clf.score(validation_data, validation_labels)
+        test_score = clf.score(test_data, test_labels)
+
+    print('Validation score is {}\nTest score is {}'.format(validation_score, test_score))
+    return validation_score, test_score
 
 
 def get_result_score_by_kmeans(proj_data, labels_true, components_num):

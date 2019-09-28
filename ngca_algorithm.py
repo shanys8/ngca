@@ -200,9 +200,9 @@ def score_ngca_on_oil_data_by_svm(alpha1, alpha2, beta1, beta2):
     # build SVM classifier - fit by train data and check predication of validation data
     clf = SVC(gamma='auto')
     clf.fit(proj_train_data, train_labels)
-    predicted_valiation_labels = clf.predict(proj_validation_data)
+    predicted_validation_labels = clf.predict(proj_validation_data)
 
     # assign score
-    # score = clf.score(proj_validation_data, validation_labels)  # another way for score
-    score = utilities.score_labels(validation_labels, predicted_valiation_labels)  # we want to minimize score
-    return score
+    score = clf.score(proj_validation_data, validation_labels)  # score by SVM model
+    # score = utilities.score_labels(validation_labels, predicted_validation_labels)  # we want to minimize score
+    return 1 - score  # we want to minimize score

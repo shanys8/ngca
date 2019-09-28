@@ -95,9 +95,9 @@ def scoring_by_svm():
     # build SVM classifier - fit by train data
     clf = SVC(gamma='auto')  # TODO adjust params
     clf.fit(proj_train_data, train_labels)
-    predicted_valiation_labels = clf.predict(proj_validation_data)
-    # score = clf.score(proj_validation_data, validation_labels)  # another way for score
-    score = adjusted_rand_score(validation_labels, predicted_valiation_labels)
+    predicted_validation_labels = clf.predict(proj_validation_data)
+    score = clf.score(proj_validation_data, validation_labels)  # another way for score
+    # score = adjusted_rand_score(validation_labels, predicted_validation_labels)
     utilities.print_score(score)
 
     # plot data in 2D & 3D
