@@ -32,20 +32,17 @@ def evaluate_test_data_by_svm(algorithm_params):
     # Project train and test data on the result subspace
     proj_train_data = np.dot(train_data, approx_ng_subspace)
     proj_test_data = np.dot(test_data, approx_ng_subspace)
-    # # experiment to see score in compare to SVM run on test data
-    # proj_train_data = utilities.download_data('proj_train_data')
-    # proj_test_data = utilities.download_data('proj_test_data')
 
     # build SVM classifier - fit by train data and check predication of test data
     clf = SVC(gamma='auto')
     clf.fit(proj_train_data, train_labels)
-    predicted_test_labels = clf.predict(proj_test_data)
+    # predicted_test_labels = clf.predict(proj_test_data)
 
     # assign score
-    # score = clf.score(proj_validation_data, validation_labels)  # another way for score
-    score = utilities.score_labels(test_labels, predicted_test_labels)  # we want to minimize score
+    score = clf.score(proj_test_data, test_labels)  # another way for score
+    # score = utilities.score_labels(test_labels, predicted_test_labels)  # we want to minimize score
     print('Score on test data:')
-    utilities.print_score_fixed(score)
+    utilities.print_score(score)
 
     plot_2d_data(proj_test_data, test_labels, algorithm_params)
     plot_3d_data(proj_test_data, test_labels, algorithm_params)
