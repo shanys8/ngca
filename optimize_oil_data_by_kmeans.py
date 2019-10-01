@@ -110,19 +110,6 @@ def scoring_by_kmeans():
     return score
 
 
-# def score_by_svm():
-#     clf = SVC(gamma='auto')
-#     train_data = utilities.download_data('DataTrn')
-#     validation_data = utilities.download_data('DataVdn')
-#     train_labels = utilities.download_labels('DataTrn')
-#     validation_labels = utilities.download_labels('DataVdn')
-#     clf.fit(train_data, train_labels)
-#     predicted_validation_labels = clf.predict(validation_data)
-#     score = adjusted_rand_score(validation_labels, predicted_validation_labels)
-#
-#     return score
-
-
 def main():
 
     # Optimize params on test and validation datasets

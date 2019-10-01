@@ -3,6 +3,8 @@ import math
 from numpy import linalg as LA
 import utilities
 from sklearn.svm import SVC
+from sklearn.cluster import KMeans
+from sklearn.metrics.cluster import adjusted_rand_score
 
 # Features as columns
 # Samples as rows
@@ -88,8 +90,6 @@ def whiten(X):
     return X_w, c, W
 
 
-
-
 def assert_all_columns_unit_vectors(matrix):
     i = 0
     while i < matrix.shape[1]:
@@ -163,20 +163,26 @@ def score_ngca_on_oil_data_by_kmeans(alpha1, alpha2, beta1, beta2):
     return score
 
 
-def score_ngca_algorithm_on_clover_dataset(alpha1, alpha2, beta1, beta2):
+def score_ngca_algorithm_on_clover_data_by_kmeans(alpha1, alpha2, beta1, beta2):
 
-    samples, samples_copy = utilities.download_data('shuffled_clover', separate_data=True)
-    shuffled_data = utilities.download_data('shuffled_clover')
-    clover_labels = utilities.download('clover_labels')
+    samples, samples_copy = utilities.download_data('blanchard_clover_shuffled_full', separate_data=True)
+    shuffled_data_full = utilities.download_data('blanchard_clover_shuffled_full')
+    clover_data = utilities.download('blanchard_clover_data')
+
+    kmeans_clover = KMeans(n_clusters=4, random_state=0).fit(clover_data)  # Get 4 clusters labels
+    clover_kmeans_labels = kmeans_clover.labels_
 
     # run NGCA on shuffled data
     approx_ng_subspace = run_ngca_algorithm(samples, samples_copy, alpha1, alpha2, beta1, beta2)
 
     # Project shuffled_data on the result subspace
-    proj_data = np.dot(shuffled_data, approx_ng_subspace)
+    proj_data = np.dot(shuffled_data_full, approx_ng_subspace)
 
-    # evaluate data clustering by algorithm
-    score = utilities.get_result_score_by_kmeans(proj_data, clover_labels, 4)
+    # evaluate result data by KMEANS
+    kmeans_clover = KMeans(n_clusters=4, random_state=0).fit(proj_data)  # Get 4 clusters labels
+    predicted_result_labels = kmeans_clover.labels_
+
+    score = utilities.score_labels(clover_kmeans_labels, predicted_result_labels)
 
     return score
 
@@ -206,3 +212,35 @@ def score_ngca_on_oil_data_by_svm(alpha1, alpha2, beta1, beta2):
     score = clf.score(proj_validation_data, validation_labels)  # score by SVM model
     # score = utilities.score_labels(validation_labels, predicted_validation_labels)  # we want to minimize score
     return 1 - score  # we want to minimize score
+
+
+def score_ngca_on_clover_data_by_svm(alpha1, alpha2, beta1, beta2):
+
+    # get samples and labels from train and validation data
+    train_shuffled_data = utilities.download_data('cloverDataShuffledTrn')
+    train_data = utilities.download_data('cloverDataTrn')
+    kmeans_train_data = KMeans(n_clusters=4, random_state=0).fit(train_data)  # Get 4 clusters lables
+    train_labels = kmeans_train_data.labels_
+    validation_shuffled_data = utilities.download_data('cloverDataShuffledVdn')
+    validation_data = utilities.download_data('cloverDataVdn')
+    kmeans_validation_data = KMeans(n_clusters=4, random_state=0).fit(validation_data)  # Get 4 clusters lables
+    validation_labels = kmeans_validation_data.labels_
+
+    # Run algorithm on samples from train data
+    train_samples, train_samples_copy = utilities.download_data('cloverDataShuffledTrn', separate_data=True)
+    approx_ng_subspace = run_ngca_algorithm(train_samples, train_samples_copy, alpha1, alpha2, beta1, beta2)
+
+    # Project train and validation data on the result subspace
+    proj_train_shuffled_data = np.dot(train_shuffled_data, approx_ng_subspace)
+    proj_validation_shuffled_data = np.dot(validation_shuffled_data, approx_ng_subspace)
+
+    # build SVM classifier - fit by train data and check predication of validation data
+    clf = SVC(gamma='auto')
+    clf.fit(proj_train_shuffled_data, train_labels)
+    predicted_validation_labels = clf.predict(proj_validation_shuffled_data)
+
+    # assign score
+    score = clf.score(proj_validation_shuffled_data, validation_labels)  # score by SVM model
+    score_to_check = adjusted_rand_score(validation_labels, predicted_validation_labels) 
+    return 1 - score  # we want to minimize score
+
