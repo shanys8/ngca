@@ -109,8 +109,8 @@ def main():
     # Optimize params on test and validation datasets
     instrum = ng.Instrumentation(alpha1=ng.var.Array(1).asscalar(),
                                  alpha2=ng.var.Array(1).asscalar(),
-                                 beta1=ng.var.Array(1).asscalar(),
-                                 beta2=ng.var.Array(1).asscalar())
+                                 beta1=ng.var.Array(1).bounded(a_min=0, a_max=constant.MAX_BETA_VALUE),
+                                 beta2=ng.var.Array(1).bounded(a_min=0, a_max=constant.MAX_BETA_VALUE))
     optimizer = ng.optimizers.DiagonalCMA(instrumentation=instrum, budget=100)
     # recommendation = optimizer.minimize(score_ngca_on_oil_data_by_kmeans)
 

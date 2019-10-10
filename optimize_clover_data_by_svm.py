@@ -13,9 +13,12 @@ from ngca_algorithm import score_ngca_on_clover_data_by_svm as score_ngca_on_clo
 
 
 def evaluate_test_data_by_svm(algorithm_params):
-    samples, samples_copy = utilities.download_data('cloverDataShuffledTst', separate_data=True)
-    shuffled_data_full = utilities.download_data('cloverDataShuffledTst')
-    clover_data = utilities.download('cloverDataTst')
+    # samples, samples_copy = utilities.download_data('cloverDataShuffledTst', separate_data=True)
+    samples, samples_copy = utilities.download_data('cloverDataShuffledTrn', separate_data=True)
+    # shuffled_data_full = utilities.download_data('cloverDataShuffledTst')
+    shuffled_data_full = utilities.download_data('cloverDataShuffledTrn')
+    # clover_data = utilities.download('cloverDataTst')
+    clover_data = utilities.download('cloverDataTrn')
 
     # run NGCA on shuffled data
     approx_ng_subspace = run_ngca_algorithm(samples, samples_copy, algorithm_params)
@@ -52,8 +55,8 @@ def main():
 
     instrum = ng.Instrumentation(alpha1=ng.var.Array(1).asscalar(),
                                  alpha2=ng.var.Array(1).asscalar(),
-                                 beta1=ng.var.Array(1).asscalar(),
-                                 beta2=ng.var.Array(1).asscalar())
+                                 beta1=ng.var.Array(1).bounded(a_min=0, a_max=constant.MAX_BETA_VALUE),
+                                 beta2=ng.var.Array(1).bounded(a_min=0, a_max=constant.MAX_BETA_VALUE))
     optimizer = ng.optimizers.CMA(instrumentation=instrum, budget=10)
 
     for i in range(optimizer.budget):

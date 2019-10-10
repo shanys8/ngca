@@ -1,6 +1,10 @@
 import numpy as np
 from numpy import linalg as LA
 import math
+import matplotlib
+import constant
+from matplotlib import pyplot as plt
+import time
 # from scipy import linalg
 from scipy.linalg import hadamard
 import seaborn as sns
@@ -13,6 +17,8 @@ from mpl_toolkits.mplot3d import Axes3D
 import itertools
 from sklearn.metrics.cluster import adjusted_rand_score
 from sklearn.svm import SVC
+from sklearn.pipeline import Pipeline
+from sklearn.model_selection import GridSearchCV
 from sklearn.decomposition import PCA
 from sklearn.preprocessing import StandardScaler
 
@@ -69,14 +75,83 @@ def generate_shuffled_data(data):
 
 
 def perform_pca(data):
-    data = StandardScaler().fit_transform(data)
+    scaler = StandardScaler()
+    scaler.fit(data)
+    feature_scaled = scaler.transform(data)
+
     pca = PCA(n_components=3, svd_solver='full')
-    principal_components = pca.fit_transform(data)
+    principal_components = pca.fit_transform(feature_scaled)
+
     return principal_components
+
+
+def PCA_SVM_optimal(find_best_params=False):
+
+    # get data
+    train_data = download_data('DataTrn')
+    train_labels = download_labels('DataTrn')
+    validation_data = download_data('DataVdn')
+    validation_labels = download_labels('DataVdn')
+    test_data = download_data('DataTst')
+    test_labels = download_labels('DataTst')
+
+    #TODO replace with perform_PCA function
+    # perform PCA
+    scaler = StandardScaler()
+    scaler.fit(test_data)
+    test_data_scaled = scaler.transform(test_data)
+    pca = PCA(n_components=3)
+    test_data_scaled_reduced = pca.fit_transform(test_data_scaled)
+
+    scaler1 = StandardScaler()
+    scaler1.fit(train_data)
+    train_data_scaled = scaler.transform(train_data)
+    pca1 = PCA(n_components=3)
+    train_data_scaled_reduced = pca1.fit_transform(train_data_scaled)
+
+    if find_best_params:
+        # get optimal params
+        pipe_steps = [('scaler', StandardScaler()), ('pca', PCA()), ('SupVM', SVC(kernel='rbf'))]
+        pipeline = Pipeline(pipe_steps)
+        check_params = {
+            'pca__n_components': [3],
+            'SupVM__C': [0.1, 0.5, 1, 10, 30, 40, 50, 75, 100, 500, 1000],
+            'SupVM__gamma': [0.001, 0.005, 0.01, 0.05, 0.07, 0.1, 0.5, 1, 5, 10, 50]
+        }
+
+        create_grid = GridSearchCV(pipeline, param_grid=check_params, cv=5)
+        create_grid.fit(train_data, train_labels)
+        print("score for 5 fold CV is %3.2f" % (create_grid.score(test_data, test_labels)))
+        print('best params')
+        print(create_grid.best_params_)
+
+
+    # build SVM model
+    if find_best_params:
+        svm_model = SVC(kernel='rbf', C=float(create_grid.best_params_['SupVM__C']), gamma=float(create_grid.best_params_['SupVM__gamma']))
+    else:
+        svm_model = SVC(kernel='rbf', C=500, gamma=0.1)  #found the optimal once
+
+    # svm_model.fit(test_data_scaled_reduced, test_labels)
+    svm_model.fit(train_data_scaled_reduced, train_labels)
+    test_score = svm_model.score(test_data_scaled_reduced, test_labels)
+
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d')
+
+    # plot first three dimensions of data
+    ax.scatter(test_data_scaled_reduced[:, 0], test_data_scaled_reduced[:, 1], test_data_scaled_reduced[:, 2], c=test_labels,
+               cmap=matplotlib.colors.ListedColormap(constant.CLUSTERS_3_COLORS))
+
+    plt.show()
+    # plt.savefig('results/test_oil_data_after_pca.png')
+
+    print('end')
 
 
 # score initial data (with or without PCA run) by SVM model
 def score_initial_data_by_svm(under_pca=False):
+
     # get samples and labels from train and validation data
     train_data = download_data('DataTrn')
     train_labels = download_labels('DataTrn')
@@ -92,16 +167,18 @@ def score_initial_data_by_svm(under_pca=False):
         validation_data = perform_pca(validation_data)
         test_data = perform_pca(test_data)
         clf.fit(train_data, train_labels)
+        train_score = clf.score(train_data, train_labels)
         validation_score = clf.score(validation_data, validation_labels)
         test_score = clf.score(test_data, test_labels)
     else:
         clf.fit(train_data, train_labels)
-        predicted_validation_labels = clf.predict(validation_data)
+        # predicted_validation_labels = clf.predict(validation_data)
+        train_score = clf.score(train_data, train_labels)
         validation_score = clf.score(validation_data, validation_labels)
         test_score = clf.score(test_data, test_labels)
 
-    print('Validation score is {}\nTest score is {}'.format(validation_score, test_score))
-    return validation_score, test_score
+    print('Train score is {}\nValidation score is {}\nTest score is {}'.format(train_score, validation_score, test_score))
+    return train_score, validation_score, test_score
 
 
 def get_result_score_by_kmeans(proj_data, labels_true, components_num):
@@ -124,6 +201,35 @@ def compare_labels_for_blanchard_result(file_name):
     print_score(score)
 
 
+def blanchard_scoring_by_svm():
+
+    # get samples and labels from train and validation data
+    train_data = download_data('DataTrn')
+    train_labels = download_labels('DataTrn')
+    validation_data = download_data('DataVdn')
+    validation_labels = download_labels('DataVdn')
+    test_data = download_data('DataTst')
+    test_labels = download_labels('DataTst')
+
+    # Run blanchard algorithm on train data and get ngspace from matlab script
+    approx_ng_subspace = np.loadtxt(fname="datasets/blanchard_ngspace.txt")
+
+    # Project train and validation data on the result subspace
+    proj_train_data = np.dot(train_data, approx_ng_subspace)
+    proj_validation_data = np.dot(validation_data, approx_ng_subspace)
+    proj_test_data = np.dot(test_data, approx_ng_subspace)
+
+    # build SVM classifier - fit by train data
+    clf = SVC(gamma='auto')
+    clf.fit(proj_train_data, train_labels)
+    train_score = clf.score(proj_train_data, train_labels)
+    validation_score = clf.score(proj_validation_data, validation_labels)
+    test_score = clf.score(proj_test_data, test_labels)
+
+    print('Train score is {}\nValidation score is {}\nTest score is {}'.format(train_score, validation_score, test_score))
+    return train_score, validation_score, test_score
+
+
 def calculate_centers_by_labels(X, labels):
     res = np.concatenate((X[labels == 0, :].mean(axis=0)[np.newaxis], X[labels == 1, :].mean(axis=0)[np.newaxis]), axis=0)
     res = np.concatenate((res, X[labels == 2, :].mean(axis=0)[np.newaxis]), axis=0)
@@ -133,7 +239,7 @@ def calculate_centers_by_labels(X, labels):
 def algorithm_params_to_print(params):
     if params:
         return 'alpha1={}|alpha2={}|beta1={}|beta1={}'.format(round(params['alpha1'], 2), round(params['alpha2'], 2),
-                                                          round(params['beta1'], 2), round(params['beta2'], 2))
+                                                          round(params['beta1'][0], 2), round(params['beta2'][0], 2))
     else:
         return 'blanchard'
 

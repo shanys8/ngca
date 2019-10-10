@@ -6,8 +6,10 @@ from sklearn.svm import SVC
 from sklearn.cluster import KMeans
 from sklearn.metrics.cluster import adjusted_rand_score
 
+
 # Features as columns
 # Samples as rows
+
 
 def compute_matrix_phi(samples, samples_copy, alpha):
     result = 0
@@ -221,26 +223,29 @@ def score_ngca_on_clover_data_by_svm(alpha1, alpha2, beta1, beta2):
     train_data = utilities.download_data('cloverDataTrn')
     kmeans_train_data = KMeans(n_clusters=4, random_state=0).fit(train_data)  # Get 4 clusters lables
     train_labels = kmeans_train_data.labels_
-    validation_shuffled_data = utilities.download_data('cloverDataShuffledVdn')
-    validation_data = utilities.download_data('cloverDataVdn')
-    kmeans_validation_data = KMeans(n_clusters=4, random_state=0).fit(validation_data)  # Get 4 clusters lables
-    validation_labels = kmeans_validation_data.labels_
+
+    # validation_shuffled_data = utilities.download_data('cloverDataShuffledVdn')
+    # validation_data = utilities.download_data('cloverDataVdn')
+    # kmeans_validation_data = KMeans(n_clusters=4, random_state=0).fit(validation_data)  # Get 4 clusters lables
+    # validation_labels = kmeans_validation_data.labels_
 
     # Run algorithm on samples from train data
     train_samples, train_samples_copy = utilities.download_data('cloverDataShuffledTrn', separate_data=True)
     approx_ng_subspace = run_ngca_algorithm(train_samples, train_samples_copy, alpha1, alpha2, beta1, beta2)
 
+    # TODO assert approx_ng_subspace dimension == 2 (clover)
     # Project train and validation data on the result subspace
     proj_train_shuffled_data = np.dot(train_shuffled_data, approx_ng_subspace)
-    proj_validation_shuffled_data = np.dot(validation_shuffled_data, approx_ng_subspace)
+    # proj_validation_shuffled_data = np.dot(validation_shuffled_data, approx_ng_subspace)
 
     # build SVM classifier - fit by train data and check predication of validation data
     clf = SVC(gamma='auto')
     clf.fit(proj_train_shuffled_data, train_labels)
-    predicted_validation_labels = clf.predict(proj_validation_shuffled_data)
+    # predicted_validation_labels = clf.predict(proj_validation_shuffled_data)
 
     # assign score
-    score = clf.score(proj_validation_shuffled_data, validation_labels)  # score by SVM model
-    score_to_check = adjusted_rand_score(validation_labels, predicted_validation_labels) 
+    score = clf.score(proj_train_shuffled_data, train_labels)  # score by SVM model
+    # score = clf.score(proj_validation_shuffled_data, validation_labels)  # score by SVM model
+    # score_to_check = adjusted_rand_score(validation_labels, predicted_validation_labels)
     return 1 - score  # we want to minimize score
 
