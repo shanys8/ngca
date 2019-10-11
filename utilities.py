@@ -75,14 +75,13 @@ def generate_shuffled_data(data):
 
 
 def perform_pca(data):
+
     scaler = StandardScaler()
     scaler.fit(data)
-    feature_scaled = scaler.transform(data)
-
-    pca = PCA(n_components=3, svd_solver='full')
-    principal_components = pca.fit_transform(feature_scaled)
-
-    return principal_components
+    tdata_scaled = scaler.transform(data)
+    pca = PCA(n_components=3)
+    data_scaled_reduced = pca.fit_transform(tdata_scaled)
+    return data_scaled_reduced
 
 
 def PCA_SVM_optimal(find_best_params=False):
@@ -90,24 +89,13 @@ def PCA_SVM_optimal(find_best_params=False):
     # get data
     train_data = download_data('DataTrn')
     train_labels = download_labels('DataTrn')
-    validation_data = download_data('DataVdn')
-    validation_labels = download_labels('DataVdn')
+    # validation_data = download_data('DataVdn')
+    # validation_labels = download_labels('DataVdn')
     test_data = download_data('DataTst')
     test_labels = download_labels('DataTst')
 
-    #TODO replace with perform_PCA function
-    # perform PCA
-    scaler = StandardScaler()
-    scaler.fit(test_data)
-    test_data_scaled = scaler.transform(test_data)
-    pca = PCA(n_components=3)
-    test_data_scaled_reduced = pca.fit_transform(test_data_scaled)
-
-    scaler1 = StandardScaler()
-    scaler1.fit(train_data)
-    train_data_scaled = scaler.transform(train_data)
-    pca1 = PCA(n_components=3)
-    train_data_scaled_reduced = pca1.fit_transform(train_data_scaled)
+    test_data_scaled_reduced = perform_pca(test_data)
+    train_data_scaled_reduced = perform_pca(train_data)
 
     if find_best_params:
         # get optimal params
@@ -125,28 +113,23 @@ def PCA_SVM_optimal(find_best_params=False):
         print('best params')
         print(create_grid.best_params_)
 
-
     # build SVM model
     if find_best_params:
-        svm_model = SVC(kernel='rbf', C=float(create_grid.best_params_['SupVM__C']), gamma=float(create_grid.best_params_['SupVM__gamma']))
+        svm_model = SVC(kernel='rbf', C=float(create_grid.best_params_['SupVM__C']),
+                        gamma=float(create_grid.best_params_['SupVM__gamma']))
     else:
-        svm_model = SVC(kernel='rbf', C=500, gamma=0.1)  #found the optimal once
+        svm_model = SVC(kernel='rbf', C=500, gamma=0.1)  # found the optimal once
 
-    # svm_model.fit(test_data_scaled_reduced, test_labels)
     svm_model.fit(train_data_scaled_reduced, train_labels)
     test_score = svm_model.score(test_data_scaled_reduced, test_labels)
 
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
 
-    # plot first three dimensions of data
-    ax.scatter(test_data_scaled_reduced[:, 0], test_data_scaled_reduced[:, 1], test_data_scaled_reduced[:, 2], c=test_labels,
-               cmap=matplotlib.colors.ListedColormap(constant.CLUSTERS_3_COLORS))
+    ax.scatter(test_data_scaled_reduced[:, 0], test_data_scaled_reduced[:, 1], test_data_scaled_reduced[:, 2],
+               c=test_labels, cmap=matplotlib.colors.ListedColormap(constant.CLUSTERS_3_COLORS))
 
-    plt.show()
-    # plt.savefig('results/test_oil_data_after_pca.png')
-
-    print('end')
+    plt.savefig('results/test_oil_data_after_pca.png')
 
 
 # score initial data (with or without PCA run) by SVM model
