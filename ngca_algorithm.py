@@ -199,17 +199,33 @@ def score_ngca_on_oil_data_by_svm(alpha1, alpha2, beta1, beta2):
 
     # Run algorithm on samples from train data
     train_samples, train_samples_copy = utilities.download_data('DataTrn', separate_data=True)
-    approx_ng_subspace = run_ngca_algorithm(train_samples, train_samples_copy, alpha1, alpha2, beta1, beta2)
-    print('reduced 12 dimensions to {} dimensions'.format(approx_ng_subspace.shape[1]))
+    approx_train_ng_subspace = run_ngca_algorithm(train_samples, train_samples_copy, alpha1, alpha2, beta1, beta2)
+    print('reduced 12 dimensions to {} dimensions'.format(approx_train_ng_subspace.shape[1]))
 
     # in case subspace is not of dimension between 3 and 6 return the worst score - invalid dimensions
-    if approx_ng_subspace.shape[1] < 3 or approx_ng_subspace.shape[1] > 6:
-        print('subspace dimension should be between 3 and 6')
+    if approx_train_ng_subspace.shape[1] < 3 or approx_train_ng_subspace.shape[1] > 6:
+        print('Train NG subspace dimension should be between 3 and 6')
         return 1
 
-    # Project train and validation data on the result subspace
-    proj_train_data = np.dot(train_data, approx_ng_subspace)
-    proj_validation_data = np.dot(validation_data, approx_ng_subspace)
+    # Project train data on the result subspace to extract the NG components
+    proj_train_data = np.dot(train_data, approx_train_ng_subspace)
+
+    # Run algorithm on samples from validation data
+    validation_samples, validation_samples_copy = utilities.download_data('DataVdn', separate_data=True)
+    approx_validation_ng_subspace = run_ngca_algorithm(validation_samples, validation_samples_copy, alpha1, alpha2, beta1, beta2)
+    print('reduced 12 dimensions to {} dimensions'.format(approx_validation_ng_subspace.shape[1]))
+
+    # in case subspace is not of dimension between 3 and 6 return the worst score - invalid dimensions
+    if approx_validation_ng_subspace.shape[1] < 3 or approx_validation_ng_subspace.shape[1] > 6:
+        print('Validation NG subspace dimension should be between 3 and 6')
+        return 1
+
+    if approx_train_ng_subspace.shape[1] != approx_validation_ng_subspace.shape[1]:
+        print('Validation and Train NG subspace dimensions are different')
+        return 1
+
+    # Project validation data on the result subspace to extract the NG components
+    proj_validation_data = np.dot(validation_data, approx_validation_ng_subspace)
 
     # build SVM classifier - fit by train data and check prediction of validation data
     # clf = SVC(gamma='auto')
@@ -218,6 +234,8 @@ def score_ngca_on_oil_data_by_svm(alpha1, alpha2, beta1, beta2):
 
     # assign score
     score = clf.score(proj_validation_data, validation_labels)  # score by SVM model
+    train_score = clf.score(proj_train_data, train_labels)  # score by SVM model
+    print('train score: {}'.format(train_score))
     return 1 - score  # we want to minimize score
 
     # predicted_validation_labels = clf.predict(proj_validation_data)

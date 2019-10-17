@@ -1,13 +1,9 @@
 import numpy as np
 import matplotlib
 from matplotlib import pyplot as plt
-import time
 from ngca_algorithm import run as run_ngca_algorithm
-from ngca_algorithm import score_ngca_on_oil_data_by_kmeans as score_ngca_on_oil_data_by_kmeans
 from ngca_algorithm import score_ngca_on_oil_data_by_svm as score_ngca_on_oil_data_by_svm
-from sklearn.cluster import KMeans
 from mpl_toolkits.mplot3d import Axes3D
-from sklearn.metrics.cluster import adjusted_rand_score
 import constant
 import nevergrad as ng
 from concurrent import futures
@@ -19,6 +15,7 @@ def evaluate_test_data_by_svm(algorithm_params):
 
     # get samples from test data
     test_samples, test_samples_copy = utilities.download_data('DataTst', separate_data=True)
+    train_samples, train_samples_copy = utilities.download_data('DataTrn', separate_data=True)
 
     # get samples and labels from train and test data
     train_data = utilities.download_data('DataTrn')
@@ -27,22 +24,20 @@ def evaluate_test_data_by_svm(algorithm_params):
     test_labels = utilities.download_labels('DataTst')
 
     # Run algorithm on samples from test data
-    approx_ng_subspace = run_ngca_algorithm(test_samples, test_samples_copy, algorithm_params)
+    approx_train_ng_subspace = run_ngca_algorithm(train_samples, train_samples_copy, algorithm_params)
+    approx_test_ng_subspace = run_ngca_algorithm(test_samples, test_samples_copy, algorithm_params)
 
-    # Project train and test data on the result subspace
-    proj_train_data = np.dot(train_data, approx_ng_subspace)
-    proj_test_data = np.dot(test_data, approx_ng_subspace)
+    # Project train data on the result subspace
+    proj_train_data = np.dot(train_data, approx_train_ng_subspace)
+    proj_test_data = np.dot(test_data, approx_test_ng_subspace)
 
-    # build SVM classifier - fit by train data and check predication of test data
+    # build SVM classifier - fit by train data and check predication (score) of test data
     # clf = SVC(gamma='auto')
     clf = SVC(kernel='rbf', C=500, gamma=0.1)
-
     clf.fit(proj_train_data, train_labels)
-    # predicted_test_labels = clf.predict(proj_test_data)
 
     # assign score
-    score = clf.score(proj_test_data, test_labels)  # another way for score
-    # score = utilities.score_labels(test_labels, predicted_test_labels)  # we want to minimize score
+    score = clf.score(proj_test_data, test_labels)
     print('Score on test data:')
     utilities.print_score(score)
 
@@ -76,7 +71,6 @@ def main():
                                  beta1=ng.var.Array(1).bounded(a_min=0, a_max=constant.MAX_BETA_VALUE),
                                  beta2=ng.var.Array(1).bounded(a_min=0, a_max=constant.MAX_BETA_VALUE))
     optimizer = ng.optimizers.DiagonalCMA(instrumentation=instrum, budget=100)
-    # recommendation = optimizer.minimize(score_ngca_on_oil_data_by_kmeans)
 
     # ask and tell
     for i in range(optimizer.budget):
