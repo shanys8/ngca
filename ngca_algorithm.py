@@ -200,20 +200,28 @@ def score_ngca_on_oil_data_by_svm(alpha1, alpha2, beta1, beta2):
     # Run algorithm on samples from train data
     train_samples, train_samples_copy = utilities.download_data('DataTrn', separate_data=True)
     approx_ng_subspace = run_ngca_algorithm(train_samples, train_samples_copy, alpha1, alpha2, beta1, beta2)
+    print('reduced 12 dimensions to {} dimensions'.format(approx_ng_subspace.shape[1]))
+
+    # in case subspace is not of dimension between 3 and 6 return the worst score - invalid dimensions
+    if approx_ng_subspace.shape[1] < 3 or approx_ng_subspace.shape[1] > 6:
+        print('subspace dimension should be between 3 and 6')
+        return 1
 
     # Project train and validation data on the result subspace
     proj_train_data = np.dot(train_data, approx_ng_subspace)
     proj_validation_data = np.dot(validation_data, approx_ng_subspace)
 
-    # build SVM classifier - fit by train data and check predication of validation data
-    clf = SVC(gamma='auto')
+    # build SVM classifier - fit by train data and check prediction of validation data
+    # clf = SVC(gamma='auto')
+    clf = SVC(kernel='rbf', C=500, gamma=0.1)
     clf.fit(proj_train_data, train_labels)
-    predicted_validation_labels = clf.predict(proj_validation_data)
 
     # assign score
     score = clf.score(proj_validation_data, validation_labels)  # score by SVM model
-    # score = utilities.score_labels(validation_labels, predicted_validation_labels)  # we want to minimize score
     return 1 - score  # we want to minimize score
+
+    # predicted_validation_labels = clf.predict(proj_validation_data)
+    # score = utilities.score_labels(validation_labels, predicted_validation_labels)  # we want to minimize score
 
 
 def score_ngca_on_clover_data_by_svm(alpha1, alpha2, beta1, beta2):
@@ -233,13 +241,19 @@ def score_ngca_on_clover_data_by_svm(alpha1, alpha2, beta1, beta2):
     train_samples, train_samples_copy = utilities.download_data('cloverDataShuffledTrn', separate_data=True)
     approx_ng_subspace = run_ngca_algorithm(train_samples, train_samples_copy, alpha1, alpha2, beta1, beta2)
 
-    # TODO assert approx_ng_subspace dimension == 2 (clover)
+    # in case subspace is not of dimension 2 then return the worst score
+    if approx_ng_subspace.shape[1] != 2:
+        print('subspace dimension is not 2')
+        return 1
+
     # Project train and validation data on the result subspace
     proj_train_shuffled_data = np.dot(train_shuffled_data, approx_ng_subspace)
     # proj_validation_shuffled_data = np.dot(validation_shuffled_data, approx_ng_subspace)
 
+
     # build SVM classifier - fit by train data and check predication of validation data
-    clf = SVC(gamma='auto')
+    # clf = SVC(gamma='auto')
+    clf = SVC(kernel='rbf', C=500, gamma=0.1)
     clf.fit(proj_train_shuffled_data, train_labels)
     # predicted_validation_labels = clf.predict(proj_validation_shuffled_data)
 

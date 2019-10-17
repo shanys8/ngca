@@ -34,7 +34,9 @@ def evaluate_test_data_by_svm(algorithm_params):
     proj_test_data = np.dot(test_data, approx_ng_subspace)
 
     # build SVM classifier - fit by train data and check predication of test data
-    clf = SVC(gamma='auto')
+    # clf = SVC(gamma='auto')
+    clf = SVC(kernel='rbf', C=500, gamma=0.1)
+
     clf.fit(proj_train_data, train_labels)
     # predicted_test_labels = clf.predict(proj_test_data)
 
@@ -64,44 +66,6 @@ def plot_3d_data(proj_data, labels, params=None):
     ax.scatter(proj_data[:, 0], proj_data[:, 1], proj_data[:, 2], c=labels,
                cmap=matplotlib.colors.ListedColormap(constant.CLUSTERS_3_COLORS))
     plt.savefig('results/oil_data_svm_3D_{}.png'.format(utilities.algorithm_params_to_print(params)))
-
-
-def scoring_by_svm():
-
-    # get samples and labels from train and validation data
-    train_data = utilities.download_data('DataTrn')
-    train_labels = utilities.download_labels('DataTrn')
-    validation_data = utilities.download_data('DataVdn')
-    validation_labels = utilities.download_labels('DataVdn')
-
-    algorithm_params = {
-        'alpha1': 0.7,
-        'alpha2': 0.3,
-        'beta1': 0.34,
-        'beta2': 0.64,
-    }
-
-    # Run algorithm on samples from train data
-    train_samples, train_samples_copy = utilities.download_data('DataTrn', separate_data=True)
-    approx_ng_subspace = run_ngca_algorithm(train_samples, train_samples_copy, algorithm_params)
-
-    # Project train and validation data on the result subspace
-    proj_train_data = np.dot(train_data, approx_ng_subspace)
-    proj_validation_data = np.dot(validation_data, approx_ng_subspace)
-
-    # build SVM classifier - fit by train data
-    clf = SVC(gamma='auto')  # TODO adjust params
-    clf.fit(proj_train_data, train_labels)
-    predicted_validation_labels = clf.predict(proj_validation_data)
-    score = clf.score(proj_validation_data, validation_labels)  # another way for score
-    # score = adjusted_rand_score(validation_labels, predicted_validation_labels)
-    utilities.print_score(score)
-
-    # plot data in 2D & 3D
-    plot_2d_data(proj_validation_data, algorithm_params, validation_labels)
-    plot_3d_data(proj_validation_data, algorithm_params, validation_labels)
-
-    return score
 
 
 def main():
