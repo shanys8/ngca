@@ -133,7 +133,7 @@ def PCA_SVM_optimal(find_best_params=False):
 
 
 # score initial data (with or without PCA run) by SVM model
-def score_initial_data_by_svm(under_pca=False):
+def score_initial_data_by_svm():
 
     # get samples and labels from train and validation data
     train_data = download_data('DataTrn')
@@ -143,22 +143,13 @@ def score_initial_data_by_svm(under_pca=False):
     test_data = download_data('DataTst')
     test_labels = download_labels('DataTst')
 
-    # build SVM classifier - fit by train data and check predication of validation and test data
-    clf = SVC(gamma='auto')
-    if under_pca:
-        train_data = perform_pca(train_data)
-        validation_data = perform_pca(validation_data)
-        test_data = perform_pca(test_data)
-        clf.fit(train_data, train_labels)
-        train_score = clf.score(train_data, train_labels)
-        validation_score = clf.score(validation_data, validation_labels)
-        test_score = clf.score(test_data, test_labels)
-    else:
-        clf.fit(train_data, train_labels)
-        # predicted_validation_labels = clf.predict(validation_data)
-        train_score = clf.score(train_data, train_labels)
-        validation_score = clf.score(validation_data, validation_labels)
-        test_score = clf.score(test_data, test_labels)
+    # build SVM classifier - fit by train data and check predication of train, validation and test data
+    clf = SVC(kernel='rbf', C=500, gamma=0.1)
+    clf.fit(train_data, train_labels)
+    # predicted_validation_labels = clf.predict(validation_data)
+    train_score = clf.score(train_data, train_labels)
+    validation_score = clf.score(validation_data, validation_labels)
+    test_score = clf.score(test_data, test_labels)
 
     print('Train score is {}\nValidation score is {}\nTest score is {}'.format(train_score, validation_score, test_score))
     return train_score, validation_score, test_score

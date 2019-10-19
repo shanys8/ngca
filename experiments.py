@@ -6,8 +6,8 @@ import utilities
 
 def main():
     # score_ngca_on_clover_data_by_svm(0.1, 0.1, 0.1, 0.1)
-    # utilities.score_initial_data_by_svm(under_pca=True)
-    utilities.PCA_SVM_optimal(find_best_params=True)
+    utilities.score_initial_data_by_svm()
+    # utilities.PCA_SVM_optimal(find_best_params=True)
     # utilities.blanchard_scoring_by_svm()
     # run_on_oil_data_scoring()
 
