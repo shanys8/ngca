@@ -53,7 +53,7 @@ def plot_2d_data(proj_data, params, labels):
     plt.scatter(centers_by_labels[:, 0], centers_by_labels[:, 1], c='yellow', marker='*', s=128)
     # plot centers of 3 clusters by kmeans result
     plt.scatter(kmeans.cluster_centers_[:, 0], kmeans.cluster_centers_[:, 1], c='orange', marker='*', s=128)
-    plt.savefig('results/oil_data_kmeans_2D_{}.png'.format(utilities.algorithm_params_to_print(params)))
+    plt.savefig('results/oil_data/params_optimization/kmeans_2D_{}.png'.format(utilities.algorithm_params_to_print(params)))
 
 
 def plot_3d_data(proj_data, params, labels):
@@ -73,7 +73,7 @@ def plot_3d_data(proj_data, params, labels):
     ax.scatter(kmeans.cluster_centers_[:, 0], kmeans.cluster_centers_[:, 1],
                kmeans.cluster_centers_[:, 2], c='orange', marker='*', s=128)
 
-    plt.savefig('results/oil_data_kmeans_3D_{}.png'.format(utilities.algorithm_params_to_print(params)))
+    plt.savefig('results/oil_data/params_optimization/kmeans_3D_{}.png'.format(utilities.algorithm_params_to_print(params)))
 
 
 def scoring_by_kmeans():

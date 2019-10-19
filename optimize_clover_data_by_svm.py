@@ -48,7 +48,7 @@ def plot_2d_data(clover_data, shuffled_data, result_data):
     axes[2].scatter(result_data[:, 0], result_data[:, 1], c=clover_kmeans_labels, cmap=matplotlib.colors.ListedColormap(constant.CLUSTERS_4_COLORS))
     axes[2].set_xlabel('Result by \nclover labels', labelpad=5)
 
-    plt.savefig('results/clover_svm_optimized.png')
+    plt.savefig('results/clover/clover_svm_optimized.png')
 
 
 def main():

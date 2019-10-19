@@ -75,7 +75,7 @@ def main():
     plt.title(data_file_name)
     # plt.legend()
     # plt.show()
-    plt.savefig('results/{}.png'.format(data_file_name))
+    plt.savefig('results/synthetic_data/{}.png'.format(data_file_name))
 
 
 if __name__ == "__main__":

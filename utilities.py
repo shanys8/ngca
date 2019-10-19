@@ -129,7 +129,7 @@ def PCA_SVM_optimal(find_best_params=False):
     ax.scatter(test_data_scaled_reduced[:, 0], test_data_scaled_reduced[:, 1], test_data_scaled_reduced[:, 2],
                c=test_labels, cmap=matplotlib.colors.ListedColormap(constant.CLUSTERS_3_COLORS))
 
-    plt.savefig('results/test_oil_data_after_pca.png')
+    plt.savefig('results/oil_data/under_pca/test_oil_data_after_pca.png')
 
 
 # score initial data (with or without PCA run) by SVM model

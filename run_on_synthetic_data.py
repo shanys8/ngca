@@ -67,7 +67,7 @@ def plot_2d_data(data, synthetic_subspace, approx_ng_subspace, params, type_of_r
     axes[2].scatter(proj_data_on_result_subspace[:, 0], proj_data_on_result_subspace[:, 1], c='red', alpha=0.5)
     axes[2].set_xlabel('Projected data on \nresult NG subspace', labelpad=5)
 
-    plt.savefig('results/synthetic_data_2D_{}_{}.png'.format(type_of_requested_subspace, utilities.algorithm_params_to_print(params)))
+    plt.savefig('results/synthetic_data/synthetic_data_2D_{}_{}.png'.format(type_of_requested_subspace, utilities.algorithm_params_to_print(params)))
 
 
 def get_PCA_data_for_plot(data):
