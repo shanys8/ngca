@@ -11,7 +11,7 @@ from sklearn.svm import SVC
 
 def plot_2d_data(clover_data, shuffled_data, result_data):
 
-    kmeans_clover = KMeans(n_clusters=4, random_state=0).fit(clover_data)  # Get 4 clusters lables
+    kmeans_clover = KMeans(n_clusters=4, random_state=0).fit(clover_data)  # Get 4 clusters labels
     clover_kmeans_labels = kmeans_clover.labels_
 
     # build SVM classifier - fit by train data and check predication of validation data

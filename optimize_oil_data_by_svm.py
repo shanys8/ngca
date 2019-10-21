@@ -50,7 +50,7 @@ def evaluate_test_data_by_svm(algorithm_params):
 def plot_2d_data(proj_data, labels, params=None):
     # plot first two dimensions of data
     plt.scatter(proj_data[:, 0], proj_data[:, 1], c=labels, cmap=matplotlib.colors.ListedColormap(constant.CLUSTERS_3_COLORS))
-    plt.savefig('results/oil_data/params_optimization/svm_2D_{}.png'.format(utilities.algorithm_params_to_print(params)))
+    plt.savefig('results/oil_data/params_optimization/svm/svm_2D_{}.png'.format(utilities.algorithm_params_to_print(params)))
 
 
 def plot_3d_data(proj_data, labels, params=None):
@@ -60,7 +60,7 @@ def plot_3d_data(proj_data, labels, params=None):
     # plot first three dimensions of data
     ax.scatter(proj_data[:, 0], proj_data[:, 1], proj_data[:, 2], c=labels,
                cmap=matplotlib.colors.ListedColormap(constant.CLUSTERS_3_COLORS))
-    plt.savefig('results/oil_data/params_optimization/svm_3D_{}.png'.format(utilities.algorithm_params_to_print(params)))
+    plt.savefig('results/oil_data/params_optimization/svm/svm_3D_{}.png'.format(utilities.algorithm_params_to_print(params)))
 
 
 def main():

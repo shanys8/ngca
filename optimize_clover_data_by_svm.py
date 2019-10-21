@@ -34,7 +34,7 @@ def evaluate_test_data_by_svm(algorithm_params):
 
 def plot_2d_data(clover_data, shuffled_data, result_data):
 
-    kmeans_clover = KMeans(n_clusters=4, random_state=0).fit(clover_data)  # Get 4 clusters lables
+    kmeans_clover = KMeans(n_clusters=4, random_state=0).fit(clover_data)  # Get 4 clusters labels
     clover_kmeans_labels = kmeans_clover.labels_
 
     f = plt.figure()
@@ -57,7 +57,7 @@ def main():
                                  alpha2=ng.var.Array(1).asscalar(),
                                  beta1=ng.var.Array(1).bounded(a_min=0, a_max=constant.MAX_BETA_VALUE),
                                  beta2=ng.var.Array(1).bounded(a_min=0, a_max=constant.MAX_BETA_VALUE))
-    optimizer = ng.optimizers.CMA(instrumentation=instrum, budget=10)
+    optimizer = ng.optimizers.CMA(instrumentation=instrum, budget=100)
 
     for i in range(optimizer.budget):
         try:
